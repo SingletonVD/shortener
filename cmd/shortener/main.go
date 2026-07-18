@@ -83,6 +83,7 @@ func createShortLinkHandle(storage *MemStorage, w http.ResponseWriter, r *http.R
 
 	w.Header().Add("Content-Type", "text/plain")
 	fmt.Fprintf(w, "http://%s/%s", currentServerHost, shortLink)
+	w.WriteHeader(http.StatusCreated)
 }
 
 func getShortLinkHandle(storage *MemStorage, w http.ResponseWriter, r *http.Request) {
