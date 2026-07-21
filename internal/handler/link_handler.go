@@ -6,8 +6,12 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/SingletonVD/shortener/internal/repository"
+	"github.com/SingletonVD/shortener/internal/service"
 )
+
+type LinksHandler struct {
+	LinksService *service.LinksService
+}
 
 func validateInputLink(inputLink string) (*url.URL, bool) {
 	url, err := url.Parse(inputLink)
@@ -21,7 +25,7 @@ func validateInputLink(inputLink string) (*url.URL, bool) {
 	return url, linkValid
 }
 
-func CreateShortLinkHandle(storage *repository.MemStorage, currentServerHost string, w http.ResponseWriter, r *http.Request) {
+func (handler *LinksHandler) CreateShortLinkHandle(currentServerHost string, w http.ResponseWriter, r *http.Request) {
 	if (r.Header.Get("Content-Type")) != "text/plain" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -42,16 +46,16 @@ func CreateShortLinkHandle(storage *repository.MemStorage, currentServerHost str
 		return
 	}
 
-	shortLink := storage.CreateShortLink(*fullLink)
+	shortLink := handler.LinksService.CreateShortLink(*fullLink)
 
 	w.Header().Add("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprintf(w, "http://%s/%s", currentServerHost, shortLink)
 }
 
-func GetShortLinkHandle(storage *repository.MemStorage, w http.ResponseWriter, r *http.Request) {
+func (handler *LinksHandler) GetShortLinkHandle(w http.ResponseWriter, r *http.Request) {
 	shortLink := r.PathValue("shortLink")
-	fullLink, found := storage.FindLink(shortLink)
+	fullLink, found := handler.LinksService.FindFullLink(shortLink)
 
 	if !found {
 		w.WriteHeader(http.StatusBadRequest)
