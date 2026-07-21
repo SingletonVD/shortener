@@ -65,6 +65,7 @@ func createShortLinkHandle(storage *MemStorage, w http.ResponseWriter, r *http.R
 		return
 	}
 
+	defer r.Body.Close()
 	inputLink, err := io.ReadAll(r.Body)
 
 	if err != nil {
