@@ -6,7 +6,7 @@ import (
 	"github.com/SingletonVD/shortener/internal/model"
 )
 
-type LinksRepository interface {
+type LinkRepository interface {
 	SaveIfAvailable(link model.ShortenedLink) bool
 	FindFullLink(shortLink string) (url.URL, bool)
 }

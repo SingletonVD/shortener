@@ -2,7 +2,6 @@ package main
 
 import (
 	"net/http"
-	"net/url"
 
 	"github.com/SingletonVD/shortener/internal/handler"
 	"github.com/SingletonVD/shortener/internal/repository"
@@ -12,9 +11,9 @@ import (
 const currentServerHost = "localhost:8080"
 
 func run() error {
-	storage := repository.MemStorage{Links: make(map[string]url.URL)}
-	service := service.LinksService{LinksRepository: &storage}
-	handler := handler.LinksHandler{LinksService: &service}
+	storage := repository.NewMemLinkRepository()
+	service := service.NewLinkService(storage)
+	handler := handler.NewLinkHandler(service)
 	mux := http.NewServeMux()
 
 	mux.Handle("POST /{$}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

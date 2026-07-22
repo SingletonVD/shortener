@@ -9,8 +9,12 @@ import (
 	"github.com/SingletonVD/shortener/internal/service"
 )
 
-type LinksHandler struct {
-	LinksService *service.LinksService
+type LinkHandler struct {
+	linkService *service.LinkService
+}
+
+func NewLinkHandler(linkService *service.LinkService) *LinkHandler {
+	return &LinkHandler{linkService: linkService}
 }
 
 func validateInputLink(inputLink string) (*url.URL, bool) {
@@ -25,7 +29,7 @@ func validateInputLink(inputLink string) (*url.URL, bool) {
 	return url, linkValid
 }
 
-func (handler *LinksHandler) CreateShortLinkHandle(currentServerHost string, w http.ResponseWriter, r *http.Request) {
+func (handler *LinkHandler) CreateShortLinkHandle(currentServerHost string, w http.ResponseWriter, r *http.Request) {
 	if (r.Header.Get("Content-Type")) != "text/plain" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -46,16 +50,16 @@ func (handler *LinksHandler) CreateShortLinkHandle(currentServerHost string, w h
 		return
 	}
 
-	shortLink := handler.LinksService.CreateShortLink(*fullLink)
+	shortLink := handler.linkService.CreateShortLink(*fullLink)
 
 	w.Header().Add("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprintf(w, "http://%s/%s", currentServerHost, shortLink)
 }
 
-func (handler *LinksHandler) GetShortLinkHandle(w http.ResponseWriter, r *http.Request) {
+func (handler *LinkHandler) GetShortLinkHandle(w http.ResponseWriter, r *http.Request) {
 	shortLink := r.PathValue("shortLink")
-	fullLink, found := handler.LinksService.FindFullLink(shortLink)
+	fullLink, found := handler.linkService.FindFullLink(shortLink)
 
 	if !found {
 		w.WriteHeader(http.StatusBadRequest)
