@@ -1,19 +1,18 @@
 package repository
 
 import (
-	"net/url"
 	"sync"
 
 	"github.com/SingletonVD/shortener/internal/model"
 )
 
 type MemLinkRepository struct {
-	links map[string]url.URL
+	links map[string]string
 	lock  sync.Mutex
 }
 
 func NewMemLinkRepository() *MemLinkRepository {
-	return &MemLinkRepository{links: make(map[string]url.URL)}
+	return &MemLinkRepository{links: make(map[string]string)}
 }
 
 func (storage *MemLinkRepository) SaveIfAvailable(link model.ShortenedLink) bool {
@@ -30,7 +29,7 @@ func (storage *MemLinkRepository) SaveIfAvailable(link model.ShortenedLink) bool
 	return true
 }
 
-func (storage *MemLinkRepository) FindFullLink(shortLink string) (url.URL, bool) {
+func (storage *MemLinkRepository) FindFullLink(shortLink string) (string, bool) {
 	storage.lock.Lock()
 	defer storage.lock.Unlock()
 

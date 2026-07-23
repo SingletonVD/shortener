@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 
 	"github.com/SingletonVD/shortener/internal/service"
+	"github.com/SingletonVD/shortener/internal/validation"
 )
 
 type LinkHandler struct {
@@ -15,18 +15,6 @@ type LinkHandler struct {
 
 func NewLinkHandler(linkService *service.LinkService) *LinkHandler {
 	return &LinkHandler{linkService: linkService}
-}
-
-func validateInputLink(inputLink string) (*url.URL, bool) {
-	url, err := url.Parse(inputLink)
-
-	if err != nil {
-		return nil, false
-	}
-
-	linkValid := !(url.Host == "" || (url.Scheme != "http" && url.Scheme != "https"))
-
-	return url, linkValid
 }
 
 func (handler *LinkHandler) CreateShortLinkHandle(currentServerHost string, w http.ResponseWriter, r *http.Request) {
@@ -43,14 +31,14 @@ func (handler *LinkHandler) CreateShortLinkHandle(currentServerHost string, w ht
 		return
 	}
 
-	fullLink, valid := validateInputLink(string(inputLink))
+	valid := validation.ValidateRawLink(string(inputLink))
 
-	if !valid || fullLink == nil {
+	if !valid {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	shortLink := handler.linkService.CreateShortLink(*fullLink)
+	shortLink := handler.linkService.CreateShortLink(string(inputLink))
 
 	w.Header().Add("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
@@ -66,6 +54,6 @@ func (handler *LinkHandler) GetShortLinkHandle(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	w.Header().Add("Location", fullLink.String())
+	w.Header().Add("Location", fullLink)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
