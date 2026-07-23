@@ -19,7 +19,7 @@ func TestValidateRawLink(t *testing.T) {
 		},
 		{
 			name:    "Valid https link",
-			rawLink: "http://practicum.yandex.ru",
+			rawLink: "https://practicum.yandex.ru",
 			want:    true,
 		},
 		{
