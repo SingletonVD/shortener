@@ -16,7 +16,7 @@ func run() error {
 	linkHandler := handler.NewLinkHandler(linkService, serverConfig.BaseLinkAddress)
 	router := handler.NewRouter(linkHandler)
 
-	return http.ListenAndServe(":8080", router)
+	return http.ListenAndServe(serverConfig.RunAddress, router)
 }
 
 func main() {
