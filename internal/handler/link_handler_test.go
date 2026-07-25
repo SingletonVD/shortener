@@ -25,7 +25,7 @@ func TestCreateShortLinkHandle(t *testing.T) {
 	storage := repository.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
 	handler := NewLinkHandler(service)
-	currentServerHost := "localhost:8080"
+	router := NewRouter(handler)
 
 	testCases := []struct {
 		name        string
@@ -77,8 +77,7 @@ func TestCreateShortLinkHandle(t *testing.T) {
 			request := httptest.NewRequest(testCase.method, testCase.path, strings.NewReader(testCase.requestBody))
 			request.Header.Set("Content-Type", testCase.contentType)
 			responseRecorder := httptest.NewRecorder()
-
-			handler.CreateShortLinkHandle(currentServerHost, responseRecorder, request)
+			router.ServeHTTP(responseRecorder, request)
 			response := responseRecorder.Result()
 
 			assert.Equal(t, testCase.want.statusCode, response.StatusCode)
@@ -152,14 +151,16 @@ func TestGetShortLinkHandle(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			service := service.NewLinkService(testCase.fakeRepository)
+			storage := testCase.fakeRepository
+			service := service.NewLinkService(storage)
 			handler := NewLinkHandler(service)
+			router := NewRouter(handler)
 
 			request := httptest.NewRequest(testCase.method, testCase.path, nil)
 			request.SetPathValue("shortLink", testCase.shortLink)
 			responseRecorder := httptest.NewRecorder()
 
-			handler.GetShortLinkHandle(responseRecorder, request)
+			router.ServeHTTP(responseRecorder, request)
 			response := responseRecorder.Result()
 
 			assert.Equal(t, testCase.want.statusCode, response.StatusCode)

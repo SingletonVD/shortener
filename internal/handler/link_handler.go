@@ -7,6 +7,7 @@ import (
 
 	"github.com/SingletonVD/shortener/internal/service"
 	"github.com/SingletonVD/shortener/internal/validation"
+	"github.com/go-chi/chi/v5"
 )
 
 type LinkHandler struct {
@@ -46,7 +47,7 @@ func (handler *LinkHandler) CreateShortLinkHandle(currentServerHost string, w ht
 }
 
 func (handler *LinkHandler) GetShortLinkHandle(w http.ResponseWriter, r *http.Request) {
-	shortLink := r.PathValue("shortLink")
+	shortLink := chi.URLParam(r, "shortLink")
 	fullLink, found := handler.linkService.FindFullLink(shortLink)
 
 	if !found {

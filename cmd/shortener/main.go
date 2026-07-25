@@ -8,20 +8,13 @@ import (
 	"github.com/SingletonVD/shortener/internal/service"
 )
 
-const currentServerHost = "localhost:8080"
-
 func run() error {
-	storage := repository.NewMemLinkRepository()
-	service := service.NewLinkService(storage)
-	handler := handler.NewLinkHandler(service)
-	mux := http.NewServeMux()
+	linkStorage := repository.NewMemLinkRepository()
+	linkService := service.NewLinkService(linkStorage)
+	linkHandler := handler.NewLinkHandler(linkService)
+	router := handler.NewRouter(linkHandler)
 
-	mux.Handle("POST /{$}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		handler.CreateShortLinkHandle(currentServerHost, w, r)
-	}))
-	mux.Handle("GET /{shortLink}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { handler.GetShortLinkHandle(w, r) }))
-
-	return http.ListenAndServe(":8080", mux)
+	return http.ListenAndServe(":8080", router)
 }
 
 func main() {
