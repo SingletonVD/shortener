@@ -22,9 +22,10 @@ func TestCreateShortLinkHandle(t *testing.T) {
 		bodyRegexp  string
 	}
 
+	baseLinkAdress := "http://localhost:8080"
 	storage := repository.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
-	handler := NewLinkHandler(service)
+	handler := NewLinkHandler(service, baseLinkAdress)
 	router := NewRouter(handler)
 
 	testCases := []struct {
@@ -151,9 +152,10 @@ func TestGetShortLinkHandle(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
+			baseLinkAdress := "http://localhost:8080"
 			storage := testCase.fakeRepository
 			service := service.NewLinkService(storage)
-			handler := NewLinkHandler(service)
+			handler := NewLinkHandler(service, baseLinkAdress)
 			router := NewRouter(handler)
 
 			request := httptest.NewRequest(testCase.method, testCase.path, nil)
