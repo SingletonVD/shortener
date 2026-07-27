@@ -26,10 +26,15 @@ func (service *LinkService) CreateShortLink(fullLink string) string {
 		FullLink: fullLink,
 	}
 
-	for saved := service.linkRepository.SaveIfAvailable(shortenedLink); !saved; {
+	for {
+		saved := service.linkRepository.SaveIfAvailable(shortenedLink)
+
+		if saved {
+			break
+		}
+
 		shortLink = random.GenerateRandomString(shortLinkLength)
 		shortenedLink.Short = shortLink
-		saved = service.linkRepository.SaveIfAvailable(shortenedLink)
 	}
 
 	return shortLink

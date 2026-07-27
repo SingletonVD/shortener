@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/SingletonVD/shortener/internal/config"
@@ -22,6 +23,6 @@ func run() error {
 func main() {
 	err := run()
 	if err != nil {
-		panic(err)
+		log.Fatalf("Error starting server: %s", err.Error())
 	}
 }

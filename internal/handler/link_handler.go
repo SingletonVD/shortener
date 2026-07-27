@@ -11,12 +11,12 @@ import (
 )
 
 type LinkHandler struct {
-	linkService    *service.LinkService
-	baseLinkAdress string
+	linkService     *service.LinkService
+	baseLinkAddress string
 }
 
-func NewLinkHandler(linkService *service.LinkService, baseLinkAdress string) *LinkHandler {
-	return &LinkHandler{linkService: linkService, baseLinkAdress: baseLinkAdress}
+func NewLinkHandler(linkService *service.LinkService, baseLinkAddress string) *LinkHandler {
+	return &LinkHandler{linkService: linkService, baseLinkAddress: baseLinkAddress}
 }
 
 func (handler *LinkHandler) CreateShortLinkHandle(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +44,7 @@ func (handler *LinkHandler) CreateShortLinkHandle(w http.ResponseWriter, r *http
 
 	w.Header().Add("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintf(w, "%s/%s", handler.baseLinkAdress, shortLink)
+	fmt.Fprintf(w, "%s/%s", handler.baseLinkAddress, shortLink)
 }
 
 func (handler *LinkHandler) GetShortLinkHandle(w http.ResponseWriter, r *http.Request) {
