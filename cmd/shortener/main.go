@@ -6,12 +6,14 @@ import (
 
 	"github.com/SingletonVD/shortener/internal/config"
 	"github.com/SingletonVD/shortener/internal/handler"
+	"github.com/SingletonVD/shortener/internal/logger"
 	"github.com/SingletonVD/shortener/internal/repository"
 	"github.com/SingletonVD/shortener/internal/service"
 )
 
 func run() error {
 	serverConfig := config.InitServerConfig()
+	logger.InitializeLogger()
 	linkStorage := repository.NewMemLinkRepository()
 	linkService := service.NewLinkService(linkStorage)
 	linkHandler := handler.NewLinkHandler(linkService, serverConfig.BaseLinkAddress)
