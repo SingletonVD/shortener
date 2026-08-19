@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 
+	"github.com/SingletonVD/shortener/internal/model"
 	"github.com/SingletonVD/shortener/internal/service"
 	"github.com/SingletonVD/shortener/internal/validation"
 	"github.com/go-chi/chi/v5"
@@ -45,6 +47,46 @@ func (handler *LinkHandler) CreateShortLinkHandle(w http.ResponseWriter, r *http
 	w.Header().Add("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprintf(w, "%s/%s", handler.baseLinkAddress, shortLink)
+}
+
+func (handler *LinkHandler) CreateShortLinkJsonHandle(w http.ResponseWriter, r *http.Request) {
+	if (r.Header.Get("Content-Type")) != "application/json" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	defer r.Body.Close()
+
+	var shortenRequest model.ShortenRequest
+
+	dec := json.NewDecoder(r.Body)
+
+	if err := dec.Decode(&shortenRequest); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	valid := validation.ValidateRawLink(string(shortenRequest.Url))
+
+	if !valid {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	shortLink := handler.linkService.CreateShortLink(string(shortenRequest.Url))
+	result := fmt.Sprintf("%s/%s", handler.baseLinkAddress, shortLink)
+	response := model.ShortenResponse{
+		Result: result,
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	enc := json.NewEncoder(w)
+	if err := enc.Encode(response); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
 
 func (handler *LinkHandler) GetShortLinkHandle(w http.ResponseWriter, r *http.Request) {
