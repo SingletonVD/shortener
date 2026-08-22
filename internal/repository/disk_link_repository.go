@@ -2,6 +2,8 @@ package repository
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"os"
 	"strconv"
 	"sync"
@@ -112,6 +114,9 @@ func (storage *DiskLinkRepository) restoreState() error {
 	err = decoder.Decode(&links)
 
 	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
 		return err
 	}
 
