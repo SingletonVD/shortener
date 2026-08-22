@@ -8,7 +8,8 @@ import (
 
 func NewRouter(handler *LinkHandler) *chi.Mux {
 	router := chi.NewRouter()
-	router.Use(LoggingHandler)
+	router.Use(LoggingMiddleware)
+	router.Use(GzipMiddleware)
 	// router.Use(middleware.AllowContentType("text/plain")) в задании указано возвращать 400 на ошибочные запросы, но тут вернется 415
 
 	router.Post("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

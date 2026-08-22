@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func LoggingHandler(nextHandler http.Handler) http.Handler {
+func LoggingMiddleware(nextHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
@@ -34,13 +34,6 @@ func LoggingHandler(nextHandler http.Handler) http.Handler {
 			zap.Int("size", responseData.size),
 		)
 	})
-}
-
-func WithLogging(h http.Handler) http.Handler {
-	logFn := func(w http.ResponseWriter, r *http.Request) {
-
-	}
-	return http.HandlerFunc(logFn)
 }
 
 type (
