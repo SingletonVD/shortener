@@ -14,7 +14,12 @@ import (
 func run() error {
 	serverConfig := config.InitServerConfig()
 	logger.InitializeLogger()
-	linkStorage := repository.NewMemLinkRepository()
+	linkStorage, err := repository.NewDiskLinkRepository(serverConfig.FileStoragePath)
+
+	if err != nil {
+		return err
+	}
+
 	linkService := service.NewLinkService(linkStorage)
 	linkHandler := handler.NewLinkHandler(linkService, serverConfig.BaseLinkAddress)
 	router := handler.NewRouter(linkHandler)

@@ -42,7 +42,12 @@ func (handler *LinkHandler) CreateShortLinkHandle(w http.ResponseWriter, r *http
 		return
 	}
 
-	shortLink := handler.linkService.CreateShortLink(string(inputLink))
+	shortLink, err := handler.linkService.CreateShortLink(string(inputLink))
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Add("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
@@ -73,7 +78,13 @@ func (handler *LinkHandler) CreateShortLinkJsonHandle(w http.ResponseWriter, r *
 		return
 	}
 
-	shortLink := handler.linkService.CreateShortLink(string(shortenRequest.Url))
+	shortLink, err := handler.linkService.CreateShortLink(string(shortenRequest.Url))
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	result := fmt.Sprintf("%s/%s", handler.baseLinkAddress, shortLink)
 	response := model.ShortenResponse{
 		Result: result,
@@ -91,13 +102,18 @@ func (handler *LinkHandler) CreateShortLinkJsonHandle(w http.ResponseWriter, r *
 
 func (handler *LinkHandler) GetShortLinkHandle(w http.ResponseWriter, r *http.Request) {
 	shortLink := chi.URLParam(r, "shortLink")
-	fullLink, found := handler.linkService.FindFullLink(shortLink)
+	link, err := handler.linkService.FindLink(shortLink)
 
-	if !found {
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if link == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	w.Header().Add("Location", fullLink)
+	w.Header().Add("Location", link.FullLink)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }

@@ -193,13 +193,21 @@ type FakeRepository struct {
 	links map[string]string
 }
 
-func (repo *FakeRepository) SaveIfAvailable(link model.ShortenedLink) bool {
-	return true
+func (repo *FakeRepository) SaveIfAvailable(link model.ShortenedLink) (bool, error) {
+	return true, nil
 }
 
-func (repo *FakeRepository) FindFullLink(shortLink string) (string, bool) {
+func (repo *FakeRepository) FindLink(shortLink string) (*model.ShortenedLink, error) {
 	fullLink, found := repo.links[shortLink]
-	return fullLink, found
+
+	if !found {
+		return nil, nil
+	}
+
+	return &model.ShortenedLink{
+		Short:    shortLink,
+		FullLink: fullLink,
+	}, nil
 }
 
 func TestGetShortLinkHandle(t *testing.T) {

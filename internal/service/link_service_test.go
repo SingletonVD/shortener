@@ -5,6 +5,7 @@ import (
 
 	"github.com/SingletonVD/shortener/internal/model"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type FakeRepository struct {
@@ -13,18 +14,18 @@ type FakeRepository struct {
 	savedLink      string
 }
 
-func (repo *FakeRepository) SaveIfAvailable(link model.ShortenedLink) bool {
+func (repo *FakeRepository) SaveIfAvailable(link model.ShortenedLink) (bool, error) {
 	repo.saveCalls += 1
 	if repo.ignoreNextSave {
 		repo.ignoreNextSave = false
-		return false
+		return false, nil
 	}
 	repo.savedLink = link.FullLink
-	return true
+	return true, nil
 }
 
-func (repo *FakeRepository) FindFullLink(shortLink string) (string, bool) {
-	return "", false
+func (repo *FakeRepository) FindLink(shortLink string) (*model.ShortenedLink, error) {
+	return nil, nil
 }
 
 func TestCreateShortLink(t *testing.T) {
@@ -65,8 +66,9 @@ func TestCreateShortLink(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			service := NewLinkService(&testCase.repo)
-			shortLink := service.CreateShortLink(testCase.link)
+			shortLink, err := service.CreateShortLink(testCase.link)
 
+			require.NoError(t, err)
 			assert.Regexp(t, testCase.want.regexp, shortLink)
 			assert.Equal(t, testCase.want.saveCalls, testCase.repo.saveCalls)
 			assert.Equal(t, testCase.want.savedLink, testCase.repo.savedLink)

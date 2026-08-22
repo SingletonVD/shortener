@@ -5,6 +5,7 @@ import (
 
 	"github.com/SingletonVD/shortener/internal/model"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSaveIfAvailable(t *testing.T) {
@@ -32,7 +33,9 @@ func TestSaveIfAvailable(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			repo := NewMemLinkRepository()
 			repo.links = testCase.repositoryState
-			assert.Equal(t, testCase.want, repo.SaveIfAvailable(testCase.link))
+			saveResult, err := repo.SaveIfAvailable(testCase.link)
+			require.NoError(t, err)
+			assert.Equal(t, testCase.want, saveResult)
 		})
 	}
 }
@@ -72,9 +75,15 @@ func TestFindFullLink(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			repo := NewMemLinkRepository()
 			repo.links = testCase.repositoryState
-			fullLink, found := repo.FindFullLink(testCase.shortLink)
-			assert.Equal(t, testCase.want.found, found)
-			assert.Equal(t, testCase.want.fullLink, fullLink)
+			link, err := repo.FindLink(testCase.shortLink)
+			require.NoError(t, err)
+
+			if testCase.want.found {
+				require.NotNil(t, link)
+				assert.Equal(t, testCase.want.fullLink, link.FullLink)
+			} else {
+				assert.Nil(t, link)
+			}
 		})
 	}
 }
