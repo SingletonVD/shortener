@@ -10,5 +10,5 @@ type ShortenedLink struct {
 // поэтому создам такую "обертку" для использования только при сохранении
 type PersistedShortenedLink struct {
 	ShortenedLink
-	UUID string `json:"uuid"`
+	UUID int `json:"uuid,string"`
 }

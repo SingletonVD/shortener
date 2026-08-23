@@ -19,16 +19,24 @@ func newCompressWriter(w http.ResponseWriter) *compressWriter {
 	}
 }
 
+func (c *compressWriter) shouldCompress() bool {
+	contentType := c.Header().Get("Content-Type")
+	return contentType == "application/json" || contentType == "text/html"
+}
+
 func (c *compressWriter) Header() http.Header {
 	return c.w.Header()
 }
 
 func (c *compressWriter) Write(p []byte) (int, error) {
-	return c.zw.Write(p)
+	if c.shouldCompress() {
+		return c.zw.Write(p)
+	}
+	return c.w.Write(p)
 }
 
 func (c *compressWriter) WriteHeader(statusCode int) {
-	if statusCode < 300 {
+	if statusCode < 300 && c.shouldCompress() {
 		c.w.Header().Set("Content-Encoding", "gzip")
 	}
 	c.w.WriteHeader(statusCode)
