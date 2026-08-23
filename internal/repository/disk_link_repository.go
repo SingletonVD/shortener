@@ -15,7 +15,7 @@ import (
 type DiskLinkRepository struct {
 	fileStoragePath string
 	links           map[string]model.PersistedShortenedLink
-	lock            sync.Mutex
+	lock            sync.RWMutex
 	lastId          int // что-то типа автоинкремента
 }
 
@@ -59,8 +59,8 @@ func (storage *DiskLinkRepository) SaveIfAvailable(link model.ShortenedLink) (bo
 }
 
 func (storage *DiskLinkRepository) FindLink(shortLink string) (*model.ShortenedLink, error) {
-	storage.lock.Lock()
-	defer storage.lock.Unlock()
+	storage.lock.RLock()
+	defer storage.lock.RUnlock()
 
 	persistedLink, found := storage.links[shortLink]
 

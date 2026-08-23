@@ -90,14 +90,16 @@ func (handler *LinkHandler) CreateShortLinkJsonHandle(w http.ResponseWriter, r *
 		Result: result,
 	}
 
-	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	responseJson, err := json.Marshal(response)
 
-	enc := json.NewEncoder(w)
-	if err := enc.Encode(response); err != nil {
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(responseJson)
 }
 
 func (handler *LinkHandler) GetShortLinkHandle(w http.ResponseWriter, r *http.Request) {
