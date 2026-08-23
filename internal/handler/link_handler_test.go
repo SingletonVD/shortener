@@ -128,7 +128,7 @@ func TestCreateShortLinkJsonHandle(t *testing.T) {
 				statusCode:  http.StatusCreated,
 				expectsBody: true,
 				contentType: "application/json",
-				bodyRegexp:  `^\{"result":"http://localhost:8080/[a-zA-Z]{8}"\}\n$`,
+				bodyRegexp:  `^\{"result":"http://localhost:8080/[a-zA-Z]{8}"\}$`,
 			},
 		},
 		{
