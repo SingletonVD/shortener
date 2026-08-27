@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 
+	"github.com/SingletonVD/shortener/internal/model"
 	"github.com/SingletonVD/shortener/internal/service"
 	"github.com/SingletonVD/shortener/internal/validation"
 	"github.com/go-chi/chi/v5"
@@ -40,22 +42,80 @@ func (handler *LinkHandler) CreateShortLinkHandle(w http.ResponseWriter, r *http
 		return
 	}
 
-	shortLink := handler.linkService.CreateShortLink(string(inputLink))
+	shortLink, err := handler.linkService.CreateShortLink(string(inputLink))
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Add("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprintf(w, "%s/%s", handler.baseLinkAddress, shortLink)
 }
 
-func (handler *LinkHandler) GetShortLinkHandle(w http.ResponseWriter, r *http.Request) {
-	shortLink := chi.URLParam(r, "shortLink")
-	fullLink, found := handler.linkService.FindFullLink(shortLink)
-
-	if !found {
+func (handler *LinkHandler) CreateShortLinkJsonHandle(w http.ResponseWriter, r *http.Request) {
+	if (r.Header.Get("Content-Type")) != "application/json" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	w.Header().Add("Location", fullLink)
+	defer r.Body.Close()
+
+	var shortenRequest model.ShortenRequest
+
+	dec := json.NewDecoder(r.Body)
+
+	if err := dec.Decode(&shortenRequest); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	valid := validation.ValidateRawLink(string(shortenRequest.Url))
+
+	if !valid {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	shortLink, err := handler.linkService.CreateShortLink(string(shortenRequest.Url))
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	result := fmt.Sprintf("%s/%s", handler.baseLinkAddress, shortLink)
+	response := model.ShortenResponse{
+		Result: result,
+	}
+
+	responseJson, err := json.Marshal(response)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(responseJson)
+}
+
+func (handler *LinkHandler) GetShortLinkHandle(w http.ResponseWriter, r *http.Request) {
+	shortLink := chi.URLParam(r, "shortLink")
+	link, err := handler.linkService.FindLink(shortLink)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if link == nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Add("Location", link.FullLink)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }

@@ -5,6 +5,7 @@ import (
 )
 
 type LinkRepository interface {
-	SaveIfAvailable(link model.ShortenedLink) bool
-	FindFullLink(shortLink string) (string, bool)
+	SaveIfAvailable(link model.ShortenedLink) (bool, error)
+	// здесь error пока не нужен, но сразу сделал задел на подключение БД, хоть и нарушаю YAGNI
+	FindLink(shortLink string) (*model.ShortenedLink, error)
 }

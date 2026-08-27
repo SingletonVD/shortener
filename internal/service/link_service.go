@@ -18,7 +18,7 @@ const (
 	shortLinkLength = 8
 )
 
-func (service *LinkService) CreateShortLink(fullLink string) string {
+func (service *LinkService) CreateShortLink(fullLink string) (string, error) {
 	shortLink := random.GenerateRandomString(shortLinkLength)
 
 	shortenedLink := model.ShortenedLink{
@@ -27,7 +27,11 @@ func (service *LinkService) CreateShortLink(fullLink string) string {
 	}
 
 	for {
-		saved := service.linkRepository.SaveIfAvailable(shortenedLink)
+		saved, err := service.linkRepository.SaveIfAvailable(shortenedLink)
+
+		if err != nil {
+			return "", err
+		}
 
 		if saved {
 			break
@@ -37,9 +41,9 @@ func (service *LinkService) CreateShortLink(fullLink string) string {
 		shortenedLink.Short = shortLink
 	}
 
-	return shortLink
+	return shortLink, nil
 }
 
-func (service *LinkService) FindFullLink(shortLink string) (string, bool) {
-	return service.linkRepository.FindFullLink(shortLink)
+func (service *LinkService) FindLink(shortLink string) (*model.ShortenedLink, error) {
+	return service.linkRepository.FindLink(shortLink)
 }
