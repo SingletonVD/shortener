@@ -9,6 +9,10 @@ import (
 	"github.com/SingletonVD/shortener/internal/logger"
 	"github.com/SingletonVD/shortener/internal/repository"
 	"github.com/SingletonVD/shortener/internal/service"
+
+	"database/sql"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func run() error {
@@ -20,9 +24,16 @@ func run() error {
 		return err
 	}
 
+	db, err := sql.Open("pgx", serverConfig.DatabaseDsn)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
 	linkService := service.NewLinkService(linkStorage)
 	linkHandler := handler.NewLinkHandler(linkService, serverConfig.BaseLinkAddress)
-	router := handler.NewRouter(linkHandler)
+	pingHandler := handler.NewPingHandler(db)
+	router := handler.NewRouter(linkHandler, pingHandler)
 
 	return http.ListenAndServe(serverConfig.RunAddress, router)
 }
