@@ -17,7 +17,7 @@ func NewRouter(linkHandler *LinkHandler, pingHandler *PingHandler) *chi.Mux {
 	}))
 
 	router.Post("/api/shorten", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		linkHandler.CreateShortLinkJsonHandle(w, r)
+		linkHandler.CreateShortLinkJSONHandle(w, r)
 	}))
 
 	router.Get("/{shortLink}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { linkHandler.GetShortLinkHandle(w, r) }))

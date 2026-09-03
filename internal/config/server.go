@@ -24,8 +24,8 @@ func InitServerConfig() *ServerConfig {
 		serverConfig.RunAddress = envServerAddress
 	}
 
-	if envBaseUrl := os.Getenv("BASE_URL"); envBaseUrl != "" {
-		serverConfig.BaseLinkAddress = envBaseUrl
+	if envBaseURL := os.Getenv("BASE_URL"); envBaseURL != "" {
+		serverConfig.BaseLinkAddress = envBaseURL
 	}
 
 	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH"); envFileStoragePath != "" {
