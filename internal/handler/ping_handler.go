@@ -14,7 +14,7 @@ func NewPingHandler(db *sql.DB) *PingHandler {
 }
 
 func (handler *PingHandler) PingHandle(w http.ResponseWriter, r *http.Request) {
-	err := handler.db.Ping()
+	err := handler.db.PingContext(r.Context())
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
