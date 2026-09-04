@@ -16,7 +16,7 @@ type DiskLinkRepository struct {
 	fileStoragePath string
 	links           map[string]model.PersistedShortenedLink
 	lock            sync.RWMutex
-	lastId          int // что-то типа автоинкремента
+	lastID          int // что-то типа автоинкремента
 }
 
 func NewDiskLinkRepository(fileStoragePath string) (*DiskLinkRepository, error) {
@@ -44,7 +44,7 @@ func (storage *DiskLinkRepository) SaveIfAvailable(link model.ShortenedLink) (bo
 
 	persistedLink := model.PersistedShortenedLink{
 		ShortenedLink: link,
-		UUID:          storage.lastId + 1,
+		UUID:          storage.lastID + 1,
 	}
 	storage.links[link.Short] = persistedLink
 	err := storage.dumpAll()
@@ -54,7 +54,7 @@ func (storage *DiskLinkRepository) SaveIfAvailable(link model.ShortenedLink) (bo
 		return false, err
 	}
 
-	storage.lastId = persistedLink.UUID
+	storage.lastID = persistedLink.UUID
 	return true, nil
 }
 
@@ -112,7 +112,7 @@ func (storage *DiskLinkRepository) restoreState() error {
 
 	for _, link := range links {
 		storage.links[link.Short] = link
-		storage.lastId = max(storage.lastId, link.UUID)
+		storage.lastID = max(storage.lastID, link.UUID)
 	}
 
 	return nil

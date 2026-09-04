@@ -26,7 +26,7 @@ func TestCreateShortLinkHandle(t *testing.T) {
 	storage := repository.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
 	handler := NewLinkHandler(service, baseLinkAddress)
-	router := NewRouter(handler)
+	router := NewRouter(handler, nil)
 
 	testCases := []struct {
 		name        string
@@ -108,7 +108,7 @@ func TestCreateShortLinkJsonHandle(t *testing.T) {
 	storage := repository.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
 	handler := NewLinkHandler(service, baseLinkAddress)
-	router := NewRouter(handler)
+	router := NewRouter(handler, nil)
 
 	testCases := []struct {
 		name        string
@@ -257,7 +257,7 @@ func TestGetShortLinkHandle(t *testing.T) {
 			storage := testCase.fakeRepository
 			service := service.NewLinkService(storage)
 			handler := NewLinkHandler(service, baseLinkAddress)
-			router := NewRouter(handler)
+			router := NewRouter(handler, nil)
 
 			request := httptest.NewRequest(testCase.method, testCase.path, nil)
 			request.SetPathValue("shortLink", testCase.shortLink)
