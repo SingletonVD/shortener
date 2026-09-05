@@ -30,6 +30,24 @@ func (storage *MemLinkRepository) SaveIfAvailable(_ context.Context, link model.
 	return true, nil
 }
 
+func (storage *MemLinkRepository) SaveBatchIfAvailable(_ context.Context, links []model.ShortenedLink) (bool, error) {
+	storage.lock.Lock()
+	defer storage.lock.Unlock()
+
+	for _, link := range links {
+		_, found := storage.links[link.Short]
+		if found {
+			return false, nil
+		}
+	}
+
+	for _, link := range links {
+		storage.links[link.Short] = link.FullLink
+	}
+
+	return true, nil
+}
+
 func (storage *MemLinkRepository) FindLink(_ context.Context, shortLink string) (*model.ShortenedLink, error) {
 	storage.lock.Lock()
 	defer storage.lock.Unlock()

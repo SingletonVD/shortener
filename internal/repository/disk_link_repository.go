@@ -59,6 +59,38 @@ func (storage *DiskLinkRepository) SaveIfAvailable(_ context.Context, link model
 	return true, nil
 }
 
+func (storage *DiskLinkRepository) SaveBatchIfAvailable(_ context.Context, links []model.ShortenedLink) (bool, error) {
+	storage.lock.Lock()
+	defer storage.lock.Unlock()
+
+	for _, link := range links {
+		_, found := storage.links[link.Short]
+		if found {
+			return false, nil
+		}
+	}
+
+	for i, link := range links {
+		persistedLink := model.PersistedShortenedLink{
+			ShortenedLink: link,
+			UUID:          storage.lastID + i + 1,
+		}
+		storage.links[link.Short] = persistedLink
+	}
+
+	err := storage.dumpAll()
+	if err != nil {
+		for _, link := range links {
+			delete(storage.links, link.Short)
+		}
+		return false, err
+	}
+
+	storage.lastID += len(links)
+
+	return true, nil
+}
+
 func (storage *DiskLinkRepository) FindLink(_ context.Context, shortLink string) (*model.ShortenedLink, error) {
 	storage.lock.RLock()
 	defer storage.lock.RUnlock()

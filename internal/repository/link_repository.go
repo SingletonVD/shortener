@@ -11,6 +11,7 @@ import (
 
 type LinkRepository interface {
 	SaveIfAvailable(context context.Context, link model.ShortenedLink) (bool, error)
+	SaveBatchIfAvailable(context context.Context, links []model.ShortenedLink) (bool, error)
 	FindLink(context context.Context, shortLink string) (*model.ShortenedLink, error)
 }
 

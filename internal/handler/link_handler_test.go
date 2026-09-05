@@ -194,8 +194,12 @@ type FakeRepository struct {
 	links map[string]string
 }
 
-func (repo *FakeRepository) SaveIfAvailable(_ context.Context, link model.ShortenedLink) (bool, error) {
+func (repo *FakeRepository) SaveIfAvailable(_ context.Context, _ model.ShortenedLink) (bool, error) {
 	return true, nil
+}
+
+func (repo *FakeRepository) SaveBatchIfAvailable(_ context.Context, _ []model.ShortenedLink) (bool, error) {
+	return false, nil
 }
 
 func (repo *FakeRepository) FindLink(_ context.Context, shortLink string) (*model.ShortenedLink, error) {

@@ -25,7 +25,11 @@ func (repo *FakeRepository) SaveIfAvailable(_ context.Context, link model.Shorte
 	return true, nil
 }
 
-func (repo *FakeRepository) FindLink(_ context.Context, shortLink string) (*model.ShortenedLink, error) {
+func (repo *FakeRepository) SaveBatchIfAvailable(_ context.Context, _ []model.ShortenedLink) (bool, error) {
+	return false, nil
+}
+
+func (repo *FakeRepository) FindLink(_ context.Context, _ string) (*model.ShortenedLink, error) {
 	return nil, nil
 }
 
