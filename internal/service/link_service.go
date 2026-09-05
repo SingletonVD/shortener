@@ -55,10 +55,10 @@ func (service *LinkService) CreateShortLinksBatch(context context.Context, fullL
 
 	shortenedLinksMap := make(map[string]model.ShortenedLink)
 
-	for correlationId, fullLink := range fullLinksBatch {
+	for correlationID, fullLink := range fullLinksBatch {
 		shortLink := random.GenerateRandomString(shortLinkLength)
 
-		shortenedLinksMap[correlationId] = model.ShortenedLink{
+		shortenedLinksMap[correlationID] = model.ShortenedLink{
 			Short:    shortLink,
 			FullLink: fullLink,
 		}
@@ -79,10 +79,10 @@ func (service *LinkService) CreateShortLinksBatch(context context.Context, fullL
 		}
 
 		// смелое предположение, что энтропии хватит, чтобы следующая генерация в обозримом будущем обошлась без коллизий
-		for correlationId, shortenedLink := range shortenedLinksMap {
+		for correlationID, shortenedLink := range shortenedLinksMap {
 			shortLink := random.GenerateRandomString(shortLinkLength)
 
-			shortenedLinksMap[correlationId] = model.ShortenedLink{
+			shortenedLinksMap[correlationID] = model.ShortenedLink{
 				Short:    shortLink,
 				FullLink: shortenedLink.FullLink,
 			}

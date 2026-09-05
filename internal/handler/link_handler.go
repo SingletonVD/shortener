@@ -130,7 +130,7 @@ func (handler *LinkHandler) CreateShortLinksBatchJSONHandle(w http.ResponseWrite
 
 	originalLinksMap := make(map[string]string)
 	for _, requestElement := range shortenBatchRequest {
-		originalLinksMap[requestElement.CorrelationId] = requestElement.OriginalURL
+		originalLinksMap[requestElement.CorrelationID] = requestElement.OriginalURL
 	}
 
 	shortenedLinksMap, err := handler.linkService.CreateShortLinksBatch(r.Context(), originalLinksMap)
@@ -142,10 +142,10 @@ func (handler *LinkHandler) CreateShortLinksBatchJSONHandle(w http.ResponseWrite
 
 	response := make([]model.ShortenBatchResponseElement, 0)
 
-	for correlationId, shortenedLink := range shortenedLinksMap {
+	for correlationID, shortenedLink := range shortenedLinksMap {
 		shortURL := fmt.Sprintf("%s/%s", handler.baseLinkAddress, shortenedLink.Short)
 		responseElement := model.ShortenBatchResponseElement{
-			CorrelationId: correlationId,
+			CorrelationID: correlationID,
 			ShortURL:      shortURL,
 		}
 		response = append(response, responseElement)
