@@ -42,7 +42,7 @@ func (handler *LinkHandler) CreateShortLinkHandle(w http.ResponseWriter, r *http
 		return
 	}
 
-	shortLink, err := handler.linkService.CreateShortLink(string(inputLink))
+	shortLink, err := handler.linkService.CreateShortLink(r.Context(), string(inputLink))
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -78,7 +78,7 @@ func (handler *LinkHandler) CreateShortLinkJSONHandle(w http.ResponseWriter, r *
 		return
 	}
 
-	shortLink, err := handler.linkService.CreateShortLink(string(shortenRequest.URL))
+	shortLink, err := handler.linkService.CreateShortLink(r.Context(), string(shortenRequest.URL))
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -104,7 +104,7 @@ func (handler *LinkHandler) CreateShortLinkJSONHandle(w http.ResponseWriter, r *
 
 func (handler *LinkHandler) GetShortLinkHandle(w http.ResponseWriter, r *http.Request) {
 	shortLink := chi.URLParam(r, "shortLink")
-	link, err := handler.linkService.FindLink(shortLink)
+	link, err := handler.linkService.FindLink(r.Context(), shortLink)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

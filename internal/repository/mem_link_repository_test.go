@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"testing"
 
 	"github.com/SingletonVD/shortener/internal/model"
@@ -33,7 +34,7 @@ func TestSaveIfAvailable(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			repo := NewMemLinkRepository()
 			repo.links = testCase.repositoryState
-			saveResult, err := repo.SaveIfAvailable(testCase.link)
+			saveResult, err := repo.SaveIfAvailable(context.TODO(), testCase.link)
 			require.NoError(t, err)
 			assert.Equal(t, testCase.want, saveResult)
 		})
@@ -75,7 +76,7 @@ func TestFindFullLink(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			repo := NewMemLinkRepository()
 			repo.links = testCase.repositoryState
-			link, err := repo.FindLink(testCase.shortLink)
+			link, err := repo.FindLink(context.TODO(), testCase.shortLink)
 			require.NoError(t, err)
 
 			if testCase.want.found {

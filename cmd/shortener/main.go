@@ -18,17 +18,18 @@ import (
 func run() error {
 	serverConfig := config.InitServerConfig()
 	logger.InitializeLogger()
-	linkStorage, err := repository.NewDiskLinkRepository(serverConfig.FileStoragePath)
-
-	if err != nil {
-		return err
-	}
 
 	db, err := sql.Open("pgx", serverConfig.DatabaseDsn)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
+
+	linkStorage, err := repository.NewLinkRepository(serverConfig, db)
+
+	if err != nil {
+		return err
+	}
 
 	linkService := service.NewLinkService(linkStorage)
 	linkHandler := handler.NewLinkHandler(linkService, serverConfig.BaseLinkAddress)

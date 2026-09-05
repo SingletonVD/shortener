@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -33,7 +34,7 @@ func NewDiskLinkRepository(fileStoragePath string) (*DiskLinkRepository, error) 
 	return &repo, err
 }
 
-func (storage *DiskLinkRepository) SaveIfAvailable(link model.ShortenedLink) (bool, error) {
+func (storage *DiskLinkRepository) SaveIfAvailable(_ context.Context, link model.ShortenedLink) (bool, error) {
 	storage.lock.Lock()
 	defer storage.lock.Unlock()
 
@@ -58,7 +59,7 @@ func (storage *DiskLinkRepository) SaveIfAvailable(link model.ShortenedLink) (bo
 	return true, nil
 }
 
-func (storage *DiskLinkRepository) FindLink(shortLink string) (*model.ShortenedLink, error) {
+func (storage *DiskLinkRepository) FindLink(_ context.Context, shortLink string) (*model.ShortenedLink, error) {
 	storage.lock.RLock()
 	defer storage.lock.RUnlock()
 

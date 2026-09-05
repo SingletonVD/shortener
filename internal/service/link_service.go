@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+
 	"github.com/SingletonVD/shortener/internal/model"
 	"github.com/SingletonVD/shortener/internal/random"
 	"github.com/SingletonVD/shortener/internal/repository"
@@ -18,7 +20,7 @@ const (
 	shortLinkLength = 8
 )
 
-func (service *LinkService) CreateShortLink(fullLink string) (string, error) {
+func (service *LinkService) CreateShortLink(context context.Context, fullLink string) (string, error) {
 	shortLink := random.GenerateRandomString(shortLinkLength)
 
 	shortenedLink := model.ShortenedLink{
@@ -27,7 +29,7 @@ func (service *LinkService) CreateShortLink(fullLink string) (string, error) {
 	}
 
 	for {
-		saved, err := service.linkRepository.SaveIfAvailable(shortenedLink)
+		saved, err := service.linkRepository.SaveIfAvailable(context, shortenedLink)
 
 		if err != nil {
 			return "", err
@@ -44,6 +46,6 @@ func (service *LinkService) CreateShortLink(fullLink string) (string, error) {
 	return shortLink, nil
 }
 
-func (service *LinkService) FindLink(shortLink string) (*model.ShortenedLink, error) {
-	return service.linkRepository.FindLink(shortLink)
+func (service *LinkService) FindLink(context context.Context, shortLink string) (*model.ShortenedLink, error) {
+	return service.linkRepository.FindLink(context, shortLink)
 }
