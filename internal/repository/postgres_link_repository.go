@@ -4,12 +4,24 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/SingletonVD/shortener/internal/model"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type PostgresLinkRepository struct {
 	db *sql.DB
+}
+
+type FullLinkConflict struct {
+	ShortLink string
+	FullLink  string
+}
+
+func (conflict *FullLinkConflict) Error() string {
+	return fmt.Sprintf("Full link %s already exists as %s", conflict.FullLink, conflict.ShortLink)
 }
 
 const (
@@ -24,6 +36,20 @@ func (storage *PostgresLinkRepository) SaveIfAvailable(context context.Context, 
 	query := insertShortenedLinkQuery
 	result, err := storage.db.ExecContext(context, query, link.Short, link.FullLink)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == pgerrcode.UniqueViolation {
+				query := "SELECT short_link, full_link FROM shortened_links WHERE full_link = $1 LIMIT 1"
+				result := storage.db.QueryRowContext(context, query, link.FullLink)
+
+				var conflict FullLinkConflict
+				err := result.Scan(&conflict.ShortLink, &conflict.FullLink)
+				if err != nil {
+					return false, err
+				}
+				return false, &conflict
+			}
+		}
 		return false, err
 	}
 

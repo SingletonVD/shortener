@@ -2,11 +2,13 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/SingletonVD/shortener/internal/model"
+	"github.com/SingletonVD/shortener/internal/repository"
 	"github.com/SingletonVD/shortener/internal/service"
 	"github.com/SingletonVD/shortener/internal/validation"
 	"github.com/go-chi/chi/v5"
@@ -45,6 +47,13 @@ func (handler *LinkHandler) CreateShortLinkHandle(w http.ResponseWriter, r *http
 	shortLink, err := handler.linkService.CreateShortLink(r.Context(), string(inputLink))
 
 	if err != nil {
+		var conflict *repository.FullLinkConflict
+		if errors.As(err, &conflict) {
+			w.Header().Add("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusConflict)
+			fmt.Fprintf(w, "%s/%s", handler.baseLinkAddress, conflict.ShortLink)
+			return
+		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -79,10 +88,17 @@ func (handler *LinkHandler) CreateShortLinkJSONHandle(w http.ResponseWriter, r *
 	}
 
 	shortLink, err := handler.linkService.CreateShortLink(r.Context(), string(shortenRequest.URL))
+	statusCode := http.StatusCreated
 
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		var conflict *repository.FullLinkConflict
+		if errors.As(err, &conflict) {
+			statusCode = http.StatusConflict
+			shortLink = conflict.ShortLink
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	result := fmt.Sprintf("%s/%s", handler.baseLinkAddress, shortLink)
@@ -98,7 +114,7 @@ func (handler *LinkHandler) CreateShortLinkJSONHandle(w http.ResponseWriter, r *
 	}
 
 	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(statusCode)
 	w.Write(responseJSON)
 }
 
