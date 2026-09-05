@@ -75,8 +75,8 @@ func TestPostgresLinkRepository(t *testing.T) {
 		setupTest()
 
 		shortenedLink := model.ShortenedLink{
-			Short:    "12345678",
-			FullLink: "https://yandex.ru",
+			Short:    "01234567",
+			FullLink: "https://yandex2.ru",
 		}
 
 		_, err := postgresLinkRepository.SaveIfAvailable(context, shortenedLink)
@@ -98,7 +98,7 @@ func TestPostgresLinkRepository(t *testing.T) {
 
 		shortenedLinks := []model.ShortenedLink{{
 			Short:    "23456789",
-			FullLink: "https://yandex.ru",
+			FullLink: "https://yandex3.ru",
 		}, {
 			Short:    "34567890",
 			FullLink: "https://ya.ru",
@@ -111,14 +111,14 @@ func TestPostgresLinkRepository(t *testing.T) {
 		foundLink, err := postgresLinkRepository.FindLink(context, "23456789")
 		require.NoError(t, err)
 		require.NotNil(t, foundLink)
-		require.Equal(t, "https://yandex.ru", foundLink.FullLink)
+		require.Equal(t, "https://yandex3.ru", foundLink.FullLink)
 
 		notSavedShortenedLinks := []model.ShortenedLink{{
 			Short:    "23456789",
-			FullLink: "https://yandex.ru",
+			FullLink: "https://yandex4.ru",
 		}, {
 			Short:    "45678901",
-			FullLink: "https://ya.ru",
+			FullLink: "https://ya2.ru",
 		}}
 
 		saved, err = postgresLinkRepository.SaveBatchIfAvailable(context, notSavedShortenedLinks)
