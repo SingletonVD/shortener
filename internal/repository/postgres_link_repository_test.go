@@ -92,4 +92,41 @@ func TestPostgresLinkRepository(t *testing.T) {
 		require.Nil(t, notFoundLink)
 
 	})
+
+	t.Run("SaveBatchIfAvailable", func(t *testing.T) {
+		setupTest()
+
+		shortenedLinks := []model.ShortenedLink{{
+			Short:    "23456789",
+			FullLink: "https://yandex.ru",
+		}, {
+			Short:    "34567890",
+			FullLink: "https://ya.ru",
+		}}
+
+		saved, err := postgresLinkRepository.SaveBatchIfAvailable(context, shortenedLinks)
+		require.NoError(t, err)
+		require.Equal(t, true, saved)
+
+		foundLink, err := postgresLinkRepository.FindLink(context, "23456789")
+		require.NoError(t, err)
+		require.NotNil(t, foundLink)
+		require.Equal(t, "https://yandex.ru", foundLink.FullLink)
+
+		notSavedShortenedLinks := []model.ShortenedLink{{
+			Short:    "23456789",
+			FullLink: "https://yandex.ru",
+		}, {
+			Short:    "45678901",
+			FullLink: "https://ya.ru",
+		}}
+
+		saved, err = postgresLinkRepository.SaveBatchIfAvailable(context, notSavedShortenedLinks)
+		require.NoError(t, err)
+		require.Equal(t, false, saved)
+
+		notFoundLink, err := postgresLinkRepository.FindLink(context, "45678901")
+		require.NoError(t, err)
+		require.Nil(t, notFoundLink)
+	})
 }

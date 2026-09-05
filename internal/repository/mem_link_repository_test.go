@@ -41,6 +41,38 @@ func TestSaveIfAvailable(t *testing.T) {
 	}
 }
 
+func TestSaveBatchIfAvailable(t *testing.T) {
+	testCases := []struct {
+		name            string
+		links           []model.ShortenedLink
+		repositoryState map[string]string
+		want            bool
+	}{
+		{
+			name:            "Save new link",
+			links:           []model.ShortenedLink{{Short: "short", FullLink: "long"}},
+			repositoryState: make(map[string]string),
+			want:            true,
+		},
+		{
+			name:            "Save new link with short link collision",
+			links:           []model.ShortenedLink{{Short: "short", FullLink: "new long"}, {Short: "short", FullLink: "long"}},
+			repositoryState: map[string]string{"short": "old long"},
+			want:            false,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			repo := NewMemLinkRepository()
+			repo.links = testCase.repositoryState
+			saveResult, err := repo.SaveBatchIfAvailable(context.TODO(), testCase.links)
+			require.NoError(t, err)
+			assert.Equal(t, testCase.want, saveResult)
+		})
+	}
+}
+
 func TestFindFullLink(t *testing.T) {
 	type Want struct {
 		found    bool
