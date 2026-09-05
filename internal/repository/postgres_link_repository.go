@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/SingletonVD/shortener/internal/model"
 )
@@ -83,7 +84,7 @@ func (storage *PostgresLinkRepository) FindLink(context context.Context, shortLi
 	var shortenedLink model.ShortenedLink
 	err := result.Scan(&shortenedLink.Short, &shortenedLink.FullLink)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err

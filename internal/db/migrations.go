@@ -2,7 +2,7 @@ package db
 
 import (
 	"database/sql"
-	"fmt"
+	"errors"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
@@ -26,8 +26,7 @@ func RunMigrationsWithPath(db *sql.DB, migrationsPath string) error {
 
 	err = migrations.Up()
 	if err != nil {
-		if err != migrate.ErrNoChange {
-			fmt.Println(err.Error())
+		if !errors.Is(err, migrate.ErrNoChange) {
 			return err
 		}
 	}
