@@ -45,10 +45,8 @@ func TestPostgresLinkRepository(t *testing.T) {
 	require.NoError(t, err)
 
 	setupTest := func() {
-		t.Cleanup(func() {
-			_, err := db.ExecContext(context, "DELETE FROM shortened_links")
-			require.NoError(t, err)
-		})
+		_, err := db.ExecContext(context, "DELETE FROM shortened_links")
+		require.NoError(t, err)
 	}
 
 	postgresLinkRepository, err := NewPostgresLinkRepository(db)
