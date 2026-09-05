@@ -1,12 +1,12 @@
 package repository
 
 import (
+	"context"
 	"sync"
 
 	"github.com/SingletonVD/shortener/internal/model"
 )
 
-// теперь unused, но оставлю
 type MemLinkRepository struct {
 	links map[string]string
 	lock  sync.Mutex
@@ -16,7 +16,7 @@ func NewMemLinkRepository() *MemLinkRepository {
 	return &MemLinkRepository{links: make(map[string]string)}
 }
 
-func (storage *MemLinkRepository) SaveIfAvailable(link model.ShortenedLink) (bool, error) {
+func (storage *MemLinkRepository) SaveIfAvailable(_ context.Context, link model.ShortenedLink) (bool, error) {
 	storage.lock.Lock()
 	defer storage.lock.Unlock()
 
@@ -30,7 +30,7 @@ func (storage *MemLinkRepository) SaveIfAvailable(link model.ShortenedLink) (boo
 	return true, nil
 }
 
-func (storage *MemLinkRepository) FindLink(shortLink string) (*model.ShortenedLink, error) {
+func (storage *MemLinkRepository) FindLink(_ context.Context, shortLink string) (*model.ShortenedLink, error) {
 	storage.lock.Lock()
 	defer storage.lock.Unlock()
 

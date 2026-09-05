@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -39,7 +40,7 @@ func TestDiskSaveIfAvailable(t *testing.T) {
 			repo, err := NewDiskLinkRepository(testFileName)
 			require.NoError(t, err)
 
-			saveResult, err := repo.SaveIfAvailable(testCase.link)
+			saveResult, err := repo.SaveIfAvailable(context.TODO(), testCase.link)
 			require.NoError(t, err)
 			assert.Equal(t, testCase.want, saveResult)
 		})
@@ -85,7 +86,7 @@ func TestDiskFindFullLink(t *testing.T) {
 			repo, err := NewDiskLinkRepository(testFileName)
 			require.NoError(t, err)
 
-			link, err := repo.FindLink(testCase.shortLink)
+			link, err := repo.FindLink(context.TODO(), testCase.shortLink)
 			require.NoError(t, err)
 
 			if testCase.want.found {

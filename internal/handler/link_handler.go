@@ -42,7 +42,7 @@ func (handler *LinkHandler) CreateShortLinkHandle(w http.ResponseWriter, r *http
 		return
 	}
 
-	shortLink, err := handler.linkService.CreateShortLink(string(inputLink))
+	shortLink, err := handler.linkService.CreateShortLink(r.Context(), string(inputLink))
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -54,7 +54,7 @@ func (handler *LinkHandler) CreateShortLinkHandle(w http.ResponseWriter, r *http
 	fmt.Fprintf(w, "%s/%s", handler.baseLinkAddress, shortLink)
 }
 
-func (handler *LinkHandler) CreateShortLinkJsonHandle(w http.ResponseWriter, r *http.Request) {
+func (handler *LinkHandler) CreateShortLinkJSONHandle(w http.ResponseWriter, r *http.Request) {
 	if (r.Header.Get("Content-Type")) != "application/json" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -71,14 +71,14 @@ func (handler *LinkHandler) CreateShortLinkJsonHandle(w http.ResponseWriter, r *
 		return
 	}
 
-	valid := validation.ValidateRawLink(string(shortenRequest.Url))
+	valid := validation.ValidateRawLink(string(shortenRequest.URL))
 
 	if !valid {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	shortLink, err := handler.linkService.CreateShortLink(string(shortenRequest.Url))
+	shortLink, err := handler.linkService.CreateShortLink(r.Context(), string(shortenRequest.URL))
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -90,7 +90,7 @@ func (handler *LinkHandler) CreateShortLinkJsonHandle(w http.ResponseWriter, r *
 		Result: result,
 	}
 
-	responseJson, err := json.Marshal(response)
+	responseJSON, err := json.Marshal(response)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -99,12 +99,12 @@ func (handler *LinkHandler) CreateShortLinkJsonHandle(w http.ResponseWriter, r *
 
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	w.Write(responseJson)
+	w.Write(responseJSON)
 }
 
 func (handler *LinkHandler) GetShortLinkHandle(w http.ResponseWriter, r *http.Request) {
 	shortLink := chi.URLParam(r, "shortLink")
-	link, err := handler.linkService.FindLink(shortLink)
+	link, err := handler.linkService.FindLink(r.Context(), shortLink)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

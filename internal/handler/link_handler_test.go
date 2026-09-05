@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -26,7 +27,7 @@ func TestCreateShortLinkHandle(t *testing.T) {
 	storage := repository.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
 	handler := NewLinkHandler(service, baseLinkAddress)
-	router := NewRouter(handler)
+	router := NewRouter(handler, nil)
 
 	testCases := []struct {
 		name        string
@@ -108,7 +109,7 @@ func TestCreateShortLinkJsonHandle(t *testing.T) {
 	storage := repository.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
 	handler := NewLinkHandler(service, baseLinkAddress)
-	router := NewRouter(handler)
+	router := NewRouter(handler, nil)
 
 	testCases := []struct {
 		name        string
@@ -193,11 +194,11 @@ type FakeRepository struct {
 	links map[string]string
 }
 
-func (repo *FakeRepository) SaveIfAvailable(link model.ShortenedLink) (bool, error) {
+func (repo *FakeRepository) SaveIfAvailable(_ context.Context, link model.ShortenedLink) (bool, error) {
 	return true, nil
 }
 
-func (repo *FakeRepository) FindLink(shortLink string) (*model.ShortenedLink, error) {
+func (repo *FakeRepository) FindLink(_ context.Context, shortLink string) (*model.ShortenedLink, error) {
 	fullLink, found := repo.links[shortLink]
 
 	if !found {
@@ -257,7 +258,7 @@ func TestGetShortLinkHandle(t *testing.T) {
 			storage := testCase.fakeRepository
 			service := service.NewLinkService(storage)
 			handler := NewLinkHandler(service, baseLinkAddress)
-			router := NewRouter(handler)
+			router := NewRouter(handler, nil)
 
 			request := httptest.NewRequest(testCase.method, testCase.path, nil)
 			request.SetPathValue("shortLink", testCase.shortLink)

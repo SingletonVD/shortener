@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	"github.com/SingletonVD/shortener/internal/model"
@@ -14,7 +15,7 @@ type FakeRepository struct {
 	savedLink      string
 }
 
-func (repo *FakeRepository) SaveIfAvailable(link model.ShortenedLink) (bool, error) {
+func (repo *FakeRepository) SaveIfAvailable(_ context.Context, link model.ShortenedLink) (bool, error) {
 	repo.saveCalls += 1
 	if repo.ignoreNextSave {
 		repo.ignoreNextSave = false
@@ -24,7 +25,7 @@ func (repo *FakeRepository) SaveIfAvailable(link model.ShortenedLink) (bool, err
 	return true, nil
 }
 
-func (repo *FakeRepository) FindLink(shortLink string) (*model.ShortenedLink, error) {
+func (repo *FakeRepository) FindLink(_ context.Context, shortLink string) (*model.ShortenedLink, error) {
 	return nil, nil
 }
 
@@ -66,7 +67,7 @@ func TestCreateShortLink(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			service := NewLinkService(&testCase.repo)
-			shortLink, err := service.CreateShortLink(testCase.link)
+			shortLink, err := service.CreateShortLink(context.TODO(), testCase.link)
 
 			require.NoError(t, err)
 			assert.Regexp(t, testCase.want.regexp, shortLink)

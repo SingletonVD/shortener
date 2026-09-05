@@ -9,12 +9,23 @@ import (
 	"github.com/SingletonVD/shortener/internal/logger"
 	"github.com/SingletonVD/shortener/internal/repository"
 	"github.com/SingletonVD/shortener/internal/service"
+
+	"database/sql"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func run() error {
 	serverConfig := config.InitServerConfig()
 	logger.InitializeLogger()
-	linkStorage, err := repository.NewDiskLinkRepository(serverConfig.FileStoragePath)
+
+	db, err := sql.Open("pgx", serverConfig.DatabaseDsn)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	linkStorage, err := repository.NewLinkRepository(serverConfig, db)
 
 	if err != nil {
 		return err
@@ -22,7 +33,8 @@ func run() error {
 
 	linkService := service.NewLinkService(linkStorage)
 	linkHandler := handler.NewLinkHandler(linkService, serverConfig.BaseLinkAddress)
-	router := handler.NewRouter(linkHandler)
+	pingHandler := handler.NewPingHandler(db)
+	router := handler.NewRouter(linkHandler, pingHandler)
 
 	return http.ListenAndServe(serverConfig.RunAddress, router)
 }
