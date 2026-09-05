@@ -82,14 +82,14 @@ func TestPostgresLinkRepository(t *testing.T) {
 		_, err := postgresLinkRepository.SaveIfAvailable(context, shortenedLink)
 		require.NoError(t, err)
 
-		found_link, err := postgresLinkRepository.FindLink(context, shortenedLink.Short)
+		foundLink, err := postgresLinkRepository.FindLink(context, shortenedLink.Short)
 		require.NoError(t, err)
-		require.NotNil(t, found_link)
-		require.Equal(t, shortenedLink, *found_link)
+		require.NotNil(t, foundLink)
+		require.Equal(t, shortenedLink, *foundLink)
 
-		not_found_link, err := postgresLinkRepository.FindLink(context, "non_existent")
+		notFoundLink, err := postgresLinkRepository.FindLink(context, "non_existent")
 		require.NoError(t, err)
-		require.Nil(t, not_found_link)
+		require.Nil(t, notFoundLink)
 
 	})
 }
