@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -26,7 +27,7 @@ func TestCreateShortLinkHandle(t *testing.T) {
 	storage := repository.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
 	handler := NewLinkHandler(service, baseLinkAddress)
-	router := NewRouter(handler)
+	router := NewRouter(handler, nil)
 
 	testCases := []struct {
 		name        string
@@ -108,7 +109,7 @@ func TestCreateShortLinkJsonHandle(t *testing.T) {
 	storage := repository.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
 	handler := NewLinkHandler(service, baseLinkAddress)
-	router := NewRouter(handler)
+	router := NewRouter(handler, nil)
 
 	testCases := []struct {
 		name        string
@@ -189,15 +190,112 @@ func TestCreateShortLinkJsonHandle(t *testing.T) {
 	}
 }
 
+func TestCreateShortLinkBatchJsonHandle(t *testing.T) {
+	type Want struct {
+		statusCode  int
+		expectsBody bool
+		contentType string
+		bodyRegexp  string
+	}
+
+	baseLinkAddress := "http://localhost:8080"
+	storage := repository.NewMemLinkRepository()
+	service := service.NewLinkService(storage)
+	handler := NewLinkHandler(service, baseLinkAddress)
+	router := NewRouter(handler, nil)
+
+	testCases := []struct {
+		name        string
+		method      string
+		path        string
+		contentType string
+		requestBody string
+		want        Want
+	}{
+		{
+			name:        "Positive case with getting short link",
+			method:      http.MethodPost,
+			path:        "/api/shorten/batch",
+			contentType: "application/json",
+			requestBody: `[{"correlation_id":"1","original_url":"https://practicum.yandex.ru"}]`,
+			want: Want{
+				statusCode:  http.StatusCreated,
+				expectsBody: true,
+				contentType: "application/json",
+				bodyRegexp:  `^\[\{"correlation_id":"1","short_url":"http://localhost:8080/[a-zA-Z]{8}"\}\]$`,
+			},
+		},
+		{
+			name:        "Bad request with wrong link",
+			method:      http.MethodPost,
+			path:        "/api/shorten/batch",
+			contentType: "application/json",
+			requestBody: `[{"correlation_id":"1","original_url":"/just/a/path"}]`,
+			want: Want{
+				statusCode:  http.StatusBadRequest,
+				expectsBody: false,
+			},
+		},
+		{
+			name:        "Bad request with wrong content-type",
+			method:      http.MethodPost,
+			path:        "/api/shorten/batch",
+			contentType: "text/plain",
+			requestBody: "https://practicum.yandex.ru",
+			want: Want{
+				statusCode:  http.StatusBadRequest,
+				expectsBody: false,
+			},
+		},
+		{
+			name:        "Bad request with wrong body",
+			method:      http.MethodPost,
+			path:        "/api/shorten/batch",
+			contentType: "application/json",
+			requestBody: "https://practicum.yandex.ru",
+			want: Want{
+				statusCode:  http.StatusBadRequest,
+				expectsBody: false,
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			request := httptest.NewRequest(testCase.method, testCase.path, strings.NewReader(testCase.requestBody))
+			request.Header.Set("Content-Type", testCase.contentType)
+			responseRecorder := httptest.NewRecorder()
+			router.ServeHTTP(responseRecorder, request)
+			response := responseRecorder.Result()
+
+			assert.Equal(t, testCase.want.statusCode, response.StatusCode)
+
+			if testCase.want.expectsBody {
+				assert.Equal(t, testCase.want.contentType, response.Header.Get("Content-Type"))
+
+				defer response.Body.Close()
+				body, err := io.ReadAll(response.Body)
+
+				require.NoError(t, err)
+				assert.Regexp(t, testCase.want.bodyRegexp, string(body))
+			}
+		})
+	}
+}
+
 type FakeRepository struct {
 	links map[string]string
 }
 
-func (repo *FakeRepository) SaveIfAvailable(link model.ShortenedLink) (bool, error) {
+func (repo *FakeRepository) SaveIfAvailable(_ context.Context, _ model.ShortenedLink) (bool, error) {
 	return true, nil
 }
 
-func (repo *FakeRepository) FindLink(shortLink string) (*model.ShortenedLink, error) {
+func (repo *FakeRepository) SaveBatchIfAvailable(_ context.Context, _ []model.ShortenedLink) (bool, error) {
+	return false, nil
+}
+
+func (repo *FakeRepository) FindLink(_ context.Context, shortLink string) (*model.ShortenedLink, error) {
 	fullLink, found := repo.links[shortLink]
 
 	if !found {
@@ -257,7 +355,7 @@ func TestGetShortLinkHandle(t *testing.T) {
 			storage := testCase.fakeRepository
 			service := service.NewLinkService(storage)
 			handler := NewLinkHandler(service, baseLinkAddress)
-			router := NewRouter(handler)
+			router := NewRouter(handler, nil)
 
 			request := httptest.NewRequest(testCase.method, testCase.path, nil)
 			request.SetPathValue("shortLink", testCase.shortLink)
