@@ -29,7 +29,7 @@ const (
 	retryLimit      = 3
 )
 
-var UniqueShortLinkViolation = errors.New("Generated short link violates unique constraint")
+var ErrUniqueShortLinkViolation = errors.New("generated short link violates unique constraint")
 
 func (service *LinkService) CreateShortLink(ctx context.Context, fullLink string) (string, error) {
 	shortLink := random.GenerateRandomString(shortLinkLength)
@@ -39,7 +39,7 @@ func (service *LinkService) CreateShortLink(ctx context.Context, fullLink string
 		FullLink: fullLink,
 	}
 
-	returnError := UniqueShortLinkViolation
+	returnError := ErrUniqueShortLinkViolation
 
 	for range retryLimit {
 		saved, err := service.linkRepository.SaveIfAvailable(ctx, shortenedLink)
@@ -77,7 +77,7 @@ func (service *LinkService) CreateShortLinksBatch(ctx context.Context, fullLinks
 	}
 
 	shortenedLinks := slices.Collect(maps.Values(shortenedLinksMap))
-	returnError := UniqueShortLinkViolation
+	returnError := ErrUniqueShortLinkViolation
 
 	for range retryLimit {
 		saved, err := service.linkRepository.SaveBatchIfAvailable(ctx, shortenedLinks)
