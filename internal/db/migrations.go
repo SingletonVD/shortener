@@ -4,22 +4,24 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/SingletonVD/shortener/migrations"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 )
 
 func RunMigrations(db *sql.DB) error {
-	return RunMigrationsWithPath(db, "file://migrations")
-}
+	src, err := iofs.New(migrations.MigrationsFS, ".")
+	if err != nil {
+		return err
+	}
 
-func RunMigrationsWithPath(db *sql.DB, migrationsPath string) error {
 	migrationsDriver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
 		return err
 	}
 
-	migrations, err := migrate.NewWithDatabaseInstance(migrationsPath, "postgres", migrationsDriver)
+	migrations, err := migrate.NewWithInstance("iofs", src, "postgres", migrationsDriver)
 	if err != nil {
 		return err
 	}

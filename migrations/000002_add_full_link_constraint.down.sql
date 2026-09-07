@@ -1,1 +1,1 @@
-DROP INDEX IF EXISTS idx_shortened_links_short_link;
+DROP INDEX IF EXISTS idx_shortened_links_full_link;

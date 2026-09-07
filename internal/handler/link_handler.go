@@ -8,7 +8,7 @@ import (
 	"net/http"
 
 	"github.com/SingletonVD/shortener/internal/model"
-	"github.com/SingletonVD/shortener/internal/repository"
+	"github.com/SingletonVD/shortener/internal/repository/pg"
 	"github.com/SingletonVD/shortener/internal/service"
 	"github.com/SingletonVD/shortener/internal/validation"
 	"github.com/go-chi/chi/v5"
@@ -47,7 +47,7 @@ func (handler *LinkHandler) CreateShortLinkHandle(w http.ResponseWriter, r *http
 	shortLink, err := handler.linkService.CreateShortLink(r.Context(), string(inputLink))
 
 	if err != nil {
-		var conflict *repository.FullLinkConflict
+		var conflict *pg.FullLinkConflict
 		if errors.As(err, &conflict) {
 			w.Header().Add("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusConflict)
@@ -91,7 +91,7 @@ func (handler *LinkHandler) CreateShortLinkJSONHandle(w http.ResponseWriter, r *
 	statusCode := http.StatusCreated
 
 	if err != nil {
-		var conflict *repository.FullLinkConflict
+		var conflict *pg.FullLinkConflict
 		if errors.As(err, &conflict) {
 			statusCode = http.StatusConflict
 			shortLink = conflict.ShortLink

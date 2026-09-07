@@ -1,20 +1,24 @@
 package handler
 
 import (
-	"database/sql"
+	"context"
 	"net/http"
 )
 
+type Pinger interface {
+	Ping(ctx context.Context) error
+}
+
 type PingHandler struct {
-	db *sql.DB
+	pinger Pinger
 }
 
-func NewPingHandler(db *sql.DB) *PingHandler {
-	return &PingHandler{db: db}
+func NewPingHandler(pinger Pinger) *PingHandler {
+	return &PingHandler{pinger: pinger}
 }
 
-func (handler *PingHandler) PingHandle(w http.ResponseWriter, r *http.Request) {
-	err := handler.db.PingContext(r.Context())
+func (pingHandler *PingHandler) PingHandle(w http.ResponseWriter, r *http.Request) {
+	err := pingHandler.pinger.Ping(r.Context())
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

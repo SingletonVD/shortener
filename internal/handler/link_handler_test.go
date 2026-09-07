@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/SingletonVD/shortener/internal/model"
-	"github.com/SingletonVD/shortener/internal/repository"
+	"github.com/SingletonVD/shortener/internal/repository/memory"
 	"github.com/SingletonVD/shortener/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,7 +24,7 @@ func TestCreateShortLinkHandle(t *testing.T) {
 	}
 
 	baseLinkAddress := "http://localhost:8080"
-	storage := repository.NewMemLinkRepository()
+	storage := memory.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
 	handler := NewLinkHandler(service, baseLinkAddress)
 	router := NewRouter(handler, nil)
@@ -106,7 +106,7 @@ func TestCreateShortLinkJsonHandle(t *testing.T) {
 	}
 
 	baseLinkAddress := "http://localhost:8080"
-	storage := repository.NewMemLinkRepository()
+	storage := memory.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
 	handler := NewLinkHandler(service, baseLinkAddress)
 	router := NewRouter(handler, nil)
@@ -199,7 +199,7 @@ func TestCreateShortLinkBatchJsonHandle(t *testing.T) {
 	}
 
 	baseLinkAddress := "http://localhost:8080"
-	storage := repository.NewMemLinkRepository()
+	storage := memory.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
 	handler := NewLinkHandler(service, baseLinkAddress)
 	router := NewRouter(handler, nil)
@@ -321,7 +321,7 @@ func TestGetShortLinkHandle(t *testing.T) {
 		method         string
 		shortLink      string
 		path           string
-		fakeRepository repository.LinkRepository
+		fakeRepository service.LinkRepository
 		want           Want
 	}{
 		{

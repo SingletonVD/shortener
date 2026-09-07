@@ -2,27 +2,36 @@ package service
 
 import (
 	"context"
+	"errors"
 	"maps"
 	"slices"
 
 	"github.com/SingletonVD/shortener/internal/model"
 	"github.com/SingletonVD/shortener/internal/random"
-	"github.com/SingletonVD/shortener/internal/repository"
 )
 
-type LinkService struct {
-	linkRepository repository.LinkRepository
+type LinkRepository interface {
+	SaveIfAvailable(ctx context.Context, link model.ShortenedLink) (bool, error)
+	SaveBatchIfAvailable(ctx context.Context, links []model.ShortenedLink) (bool, error)
+	FindLink(ctx context.Context, shortLink string) (*model.ShortenedLink, error)
 }
 
-func NewLinkService(linkRepository repository.LinkRepository) *LinkService {
+type LinkService struct {
+	linkRepository LinkRepository
+}
+
+func NewLinkService(linkRepository LinkRepository) *LinkService {
 	return &LinkService{linkRepository: linkRepository}
 }
 
 const (
 	shortLinkLength = 8
+	retryLimit      = 3
 )
 
-func (service *LinkService) CreateShortLink(context context.Context, fullLink string) (string, error) {
+var UniqueShortLinkViolation = errors.New("Generated short link violates unique constraint")
+
+func (service *LinkService) CreateShortLink(ctx context.Context, fullLink string) (string, error) {
 	shortLink := random.GenerateRandomString(shortLinkLength)
 
 	shortenedLink := model.ShortenedLink{
@@ -30,14 +39,17 @@ func (service *LinkService) CreateShortLink(context context.Context, fullLink st
 		FullLink: fullLink,
 	}
 
-	for {
-		saved, err := service.linkRepository.SaveIfAvailable(context, shortenedLink)
+	returnError := UniqueShortLinkViolation
+
+	for range retryLimit {
+		saved, err := service.linkRepository.SaveIfAvailable(ctx, shortenedLink)
 
 		if err != nil {
 			return "", err
 		}
 
 		if saved {
+			returnError = nil
 			break
 		}
 
@@ -45,10 +57,10 @@ func (service *LinkService) CreateShortLink(context context.Context, fullLink st
 		shortenedLink.Short = shortLink
 	}
 
-	return shortLink, nil
+	return shortLink, returnError
 }
 
-func (service *LinkService) CreateShortLinksBatch(context context.Context, fullLinksBatch map[string]string) (map[string]model.ShortenedLink, error) {
+func (service *LinkService) CreateShortLinksBatch(ctx context.Context, fullLinksBatch map[string]string) (map[string]model.ShortenedLink, error) {
 	if len(fullLinksBatch) == 0 {
 		return make(map[string]model.ShortenedLink), nil
 	}
@@ -65,16 +77,17 @@ func (service *LinkService) CreateShortLinksBatch(context context.Context, fullL
 	}
 
 	shortenedLinks := slices.Collect(maps.Values(shortenedLinksMap))
+	returnError := UniqueShortLinkViolation
 
-	for {
-
-		saved, err := service.linkRepository.SaveBatchIfAvailable(context, shortenedLinks)
+	for range retryLimit {
+		saved, err := service.linkRepository.SaveBatchIfAvailable(ctx, shortenedLinks)
 
 		if err != nil {
 			return nil, err
 		}
 
 		if saved {
+			returnError = nil
 			break
 		}
 
@@ -89,9 +102,9 @@ func (service *LinkService) CreateShortLinksBatch(context context.Context, fullL
 		}
 	}
 
-	return shortenedLinksMap, nil
+	return shortenedLinksMap, returnError
 }
 
-func (service *LinkService) FindLink(context context.Context, shortLink string) (*model.ShortenedLink, error) {
-	return service.linkRepository.FindLink(context, shortLink)
+func (service *LinkService) FindLink(ctx context.Context, shortLink string) (*model.ShortenedLink, error) {
+	return service.linkRepository.FindLink(ctx, shortLink)
 }

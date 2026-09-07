@@ -1,4 +1,4 @@
-package repository
+package memory
 
 import (
 	"context"
@@ -62,4 +62,8 @@ func (storage *MemLinkRepository) FindLink(_ context.Context, shortLink string) 
 		Short:    shortLink,
 		FullLink: fullLink,
 	}, nil
+}
+
+func (storage *MemLinkRepository) Ping(ctx context.Context) error {
+	return nil
 }

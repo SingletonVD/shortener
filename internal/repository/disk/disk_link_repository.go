@@ -1,4 +1,4 @@
-package repository
+package disk
 
 import (
 	"context"
@@ -148,5 +148,9 @@ func (storage *DiskLinkRepository) restoreState() error {
 		storage.lastID = max(storage.lastID, link.UUID)
 	}
 
+	return nil
+}
+
+func (storage *DiskLinkRepository) Ping(ctx context.Context) error {
 	return nil
 }
