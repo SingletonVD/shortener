@@ -1,6 +1,7 @@
-package repository
+package disk
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -16,7 +17,7 @@ type DiskLinkRepository struct {
 	fileStoragePath string
 	links           map[string]model.PersistedShortenedLink
 	lock            sync.RWMutex
-	lastId          int // что-то типа автоинкремента
+	lastID          int // что-то типа автоинкремента
 }
 
 func NewDiskLinkRepository(fileStoragePath string) (*DiskLinkRepository, error) {
@@ -33,7 +34,7 @@ func NewDiskLinkRepository(fileStoragePath string) (*DiskLinkRepository, error) 
 	return &repo, err
 }
 
-func (storage *DiskLinkRepository) SaveIfAvailable(link model.ShortenedLink) (bool, error) {
+func (storage *DiskLinkRepository) SaveIfAvailable(_ context.Context, link model.ShortenedLink) (bool, error) {
 	storage.lock.Lock()
 	defer storage.lock.Unlock()
 
@@ -44,7 +45,7 @@ func (storage *DiskLinkRepository) SaveIfAvailable(link model.ShortenedLink) (bo
 
 	persistedLink := model.PersistedShortenedLink{
 		ShortenedLink: link,
-		UUID:          storage.lastId + 1,
+		UUID:          storage.lastID + 1,
 	}
 	storage.links[link.Short] = persistedLink
 	err := storage.dumpAll()
@@ -54,11 +55,43 @@ func (storage *DiskLinkRepository) SaveIfAvailable(link model.ShortenedLink) (bo
 		return false, err
 	}
 
-	storage.lastId = persistedLink.UUID
+	storage.lastID = persistedLink.UUID
 	return true, nil
 }
 
-func (storage *DiskLinkRepository) FindLink(shortLink string) (*model.ShortenedLink, error) {
+func (storage *DiskLinkRepository) SaveBatchIfAvailable(_ context.Context, links []model.ShortenedLink) (bool, error) {
+	storage.lock.Lock()
+	defer storage.lock.Unlock()
+
+	for _, link := range links {
+		_, found := storage.links[link.Short]
+		if found {
+			return false, nil
+		}
+	}
+
+	for i, link := range links {
+		persistedLink := model.PersistedShortenedLink{
+			ShortenedLink: link,
+			UUID:          storage.lastID + i + 1,
+		}
+		storage.links[link.Short] = persistedLink
+	}
+
+	err := storage.dumpAll()
+	if err != nil {
+		for _, link := range links {
+			delete(storage.links, link.Short)
+		}
+		return false, err
+	}
+
+	storage.lastID += len(links)
+
+	return true, nil
+}
+
+func (storage *DiskLinkRepository) FindLink(_ context.Context, shortLink string) (*model.ShortenedLink, error) {
 	storage.lock.RLock()
 	defer storage.lock.RUnlock()
 
@@ -112,8 +145,12 @@ func (storage *DiskLinkRepository) restoreState() error {
 
 	for _, link := range links {
 		storage.links[link.Short] = link
-		storage.lastId = max(storage.lastId, link.UUID)
+		storage.lastID = max(storage.lastID, link.UUID)
 	}
 
+	return nil
+}
+
+func (storage *DiskLinkRepository) Ping(ctx context.Context) error {
 	return nil
 }

@@ -34,7 +34,6 @@ func (c *compressWriter) Header() http.Header {
 }
 
 func (c *compressWriter) Write(p []byte) (int, error) {
-	c.initCompressWriter()
 	if c.zw != nil {
 		return c.zw.Write(p)
 	}
@@ -43,7 +42,7 @@ func (c *compressWriter) Write(p []byte) (int, error) {
 
 func (c *compressWriter) WriteHeader(statusCode int) {
 	c.initCompressWriter()
-	if statusCode < 300 && c.zw != nil {
+	if c.zw != nil {
 		c.w.Header().Set("Content-Encoding", "gzip")
 	}
 	c.w.WriteHeader(statusCode)
