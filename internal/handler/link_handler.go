@@ -54,7 +54,7 @@ func (handler *LinkHandler) CreateShortLinkHandle(w http.ResponseWriter, r *http
 	shortLink, err := handler.linkService.CreateShortLink(r.Context(), string(inputLink), user.UserID)
 
 	if err != nil {
-		var conflict *apperror.FullLinkConflict
+		var conflict *apperror.ErrFullLinkConflict
 		if errors.As(err, &conflict) {
 			w.Header().Add("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusConflict)
@@ -104,7 +104,7 @@ func (handler *LinkHandler) CreateShortLinkJSONHandle(w http.ResponseWriter, r *
 	statusCode := http.StatusCreated
 
 	if err != nil {
-		var conflict *apperror.FullLinkConflict
+		var conflict *apperror.ErrFullLinkConflict
 		if errors.As(err, &conflict) {
 			statusCode = http.StatusConflict
 			shortLink = conflict.ShortLink

@@ -34,7 +34,7 @@ func TestPostgresLinkRepository(t *testing.T) {
 		require.Equal(t, true, saved)
 
 		_, err = postgresLinkRepository.SaveIfAvailable(ctx, shortenedLink, userID)
-		require.EqualError(t, err, (&apperror.FullLinkConflict{ShortLink: "12345678", FullLink: "https://yandex.ru"}).Error())
+		require.EqualError(t, err, (&apperror.ErrFullLinkConflict{ShortLink: "12345678", FullLink: "https://yandex.ru"}).Error())
 
 		shortenedLink = model.ShortenedLink{
 			Short:    "12345678",

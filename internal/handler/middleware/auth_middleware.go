@@ -2,8 +2,10 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
+	"github.com/SingletonVD/shortener/internal/apperror"
 	"github.com/SingletonVD/shortener/internal/model"
 	"github.com/SingletonVD/shortener/internal/service/auth"
 	"github.com/google/uuid"
@@ -40,16 +42,20 @@ func (authMiddleware *AuthMiddleware) IntrospectUserJWT(nextHandler http.Handler
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		jwtCookie, err := r.Cookie(sessionJWTCookie)
 
-		/* 	данный middlware только пытается заинтроспектить куку, если она установлена
-		обработать отсутствие авторизации уже задача следующего, т.к. логика разная для разных эндпоинтов
-		*/
 		if err != nil {
+			if errors.Is(err, http.ErrNoCookie) {
+				authMiddleware.createUser(nextHandler).ServeHTTP(w, r)
+			}
 			nextHandler.ServeHTTP(w, r)
 			return
 		}
 
 		user, err := authMiddleware.authService.IntrospectToken(jwtCookie.Value)
 		if err != nil {
+			if errors.Is(err, apperror.ErrUserIDNotDefined) {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
 			nextHandler.ServeHTTP(w, r)
 			return
 		}
@@ -59,46 +65,26 @@ func (authMiddleware *AuthMiddleware) IntrospectUserJWT(nextHandler http.Handler
 	})
 }
 
-func (authMiddleware *AuthMiddleware) CheckUser(nextHandler http.Handler) http.Handler {
+func (authMiddleware *AuthMiddleware) createUser(nextHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, ok := GetUserFromContext(r.Context())
+		newUserID := uuid.New().String()
+		newUser := &model.User{UserID: newUserID}
+		token, err := authMiddleware.authService.CreateToken(newUser)
 
-		if !ok {
-			w.WriteHeader(http.StatusUnauthorized)
+		if err != nil {
+			nextHandler.ServeHTTP(w, r)
 			return
 		}
 
-		nextHandler.ServeHTTP(w, r)
-	})
-}
+		ctxWithUser := SetUserToContext(r.Context(), newUser)
 
-func (authMiddleware *AuthMiddleware) CreateUserIfAbsent(nextHandler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, ok := GetUserFromContext(r.Context())
+		http.SetCookie(w, &http.Cookie{
+			Name:     string(sessionJWTCookie),
+			Value:    token,
+			HttpOnly: true,
+			Path:     "/",
+		})
 
-		if !ok {
-			newUserID := uuid.New().String()
-			newUser := &model.User{UserID: newUserID}
-			token, err := authMiddleware.authService.CreateToken(newUser)
-
-			if err != nil {
-				nextHandler.ServeHTTP(w, r)
-				return
-			}
-
-			ctxWithUser := SetUserToContext(r.Context(), newUser)
-
-			http.SetCookie(w, &http.Cookie{
-				Name:     string(sessionJWTCookie),
-				Value:    token,
-				HttpOnly: true,
-				Path:     "/",
-			})
-
-			nextHandler.ServeHTTP(w, r.WithContext(ctxWithUser))
-			return
-		}
-
-		nextHandler.ServeHTTP(w, r)
+		nextHandler.ServeHTTP(w, r.WithContext(ctxWithUser))
 	})
 }

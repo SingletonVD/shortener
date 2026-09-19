@@ -26,7 +26,7 @@ func (authService *AuthService) IntrospectToken(tokenString string) (*model.User
 	claims := &jwt.RegisteredClaims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*SigningMethod); !ok {
-			return nil, &apperror.UnexpectedSigningMethod{Method: fmt.Sprintf("%v", t.Header["alg"])}
+			return nil, &apperror.ErrUnexpectedSigningMethod{Method: fmt.Sprintf("%v", t.Header["alg"])}
 		}
 		return authService.authSecret, nil
 	})
@@ -35,11 +35,11 @@ func (authService *AuthService) IntrospectToken(tokenString string) (*model.User
 	}
 
 	if !token.Valid {
-		return nil, apperror.TokenNotValid
+		return nil, apperror.ErrTokenNotValid
 	}
 
 	if claims.Subject == "" {
-		return nil, apperror.UserIDNotDefined
+		return nil, apperror.ErrUserIDNotDefined
 	}
 	return &model.User{UserID: claims.Subject}, nil
 }

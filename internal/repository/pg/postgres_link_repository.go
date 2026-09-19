@@ -55,7 +55,7 @@ func (storage *PostgresLinkRepository) SaveIfAvailable(ctx context.Context, link
 		query := "SELECT short_link, full_link FROM shortened_links WHERE user_id = $1 and full_link = $2 LIMIT 1"
 		result := tx.QueryRow(ctx, query, userID, link.FullLink)
 
-		var conflict apperror.FullLinkConflict
+		var conflict apperror.ErrFullLinkConflict
 		err := result.Scan(&conflict.ShortLink, &conflict.FullLink)
 		if err != nil {
 			return false, err
@@ -136,7 +136,7 @@ func (storage *PostgresLinkRepository) GetUserLinks(ctx context.Context, userID 
 	}
 	defer rows.Close()
 
-	links := make([]model.ShortenedLink, 0, 0)
+	links := make([]model.ShortenedLink, 0)
 	for rows.Next() {
 		var shortenedLink model.ShortenedLink
 		err := rows.Scan(&shortenedLink.Short, &shortenedLink.FullLink)

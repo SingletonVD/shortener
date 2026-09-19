@@ -112,7 +112,7 @@ func (storage *DiskLinkRepository) FindLink(_ context.Context, shortLink string)
 
 func (storage *DiskLinkRepository) GetUserLinks(ctx context.Context, userID string) ([]model.ShortenedLink, error) {
 	// неоптимально, но не хотелось строить что-то типа индекса по пользователям для легаси реализации
-	result := make([]model.ShortenedLink, 0, 0)
+	result := make([]model.ShortenedLink, 0)
 
 	for _, link := range storage.links {
 		if link.UserID == userID {
