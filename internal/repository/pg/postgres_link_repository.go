@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 
+	"github.com/SingletonVD/shortener/internal/apperror"
 	intDB "github.com/SingletonVD/shortener/internal/db"
 	"github.com/SingletonVD/shortener/internal/model"
 	"github.com/jackc/pgerrcode"
@@ -19,15 +19,6 @@ type PostgresLinkRepository struct {
 	pool *pgxpool.Pool
 }
 
-type FullLinkConflict struct {
-	ShortLink string
-	FullLink  string
-}
-
-func (conflict *FullLinkConflict) Error() string {
-	return fmt.Sprintf("Full link %s already exists as %s", conflict.FullLink, conflict.ShortLink)
-}
-
 func NewPostgresLinkRepository(pool *pgxpool.Pool) (*PostgresLinkRepository, error) {
 	db := stdlib.OpenDBFromPool(pool)
 	defer db.Close()
@@ -38,15 +29,15 @@ func NewPostgresLinkRepository(pool *pgxpool.Pool) (*PostgresLinkRepository, err
 	return &PostgresLinkRepository{pool: pool}, nil
 }
 
-func (storage *PostgresLinkRepository) SaveIfAvailable(ctx context.Context, link model.ShortenedLink) (bool, error) {
-	query := "INSERT INTO shortened_links (short_link, full_link) VALUES($1, $2) ON CONFLICT (full_link) DO NOTHING"
+func (storage *PostgresLinkRepository) SaveIfAvailable(ctx context.Context, link model.ShortenedLink, userID string) (bool, error) {
+	query := "INSERT INTO shortened_links (short_link, full_link, user_id) VALUES($1, $2, $3) ON CONFLICT (user_id, full_link) DO NOTHING"
 	tx, err := storage.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
 	if err != nil {
 		return false, err
 	}
 	defer tx.Rollback(ctx)
 
-	result, err := tx.Exec(ctx, query, link.Short, link.FullLink)
+	result, err := tx.Exec(ctx, query, link.Short, link.FullLink, userID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -61,10 +52,10 @@ func (storage *PostgresLinkRepository) SaveIfAvailable(ctx context.Context, link
 
 	rowsInserted := result.RowsAffected()
 	if rowsInserted != 1 {
-		query := "SELECT short_link, full_link FROM shortened_links WHERE full_link = $1 LIMIT 1"
-		result := tx.QueryRow(ctx, query, link.FullLink)
+		query := "SELECT short_link, full_link FROM shortened_links WHERE user_id = $1 and full_link = $2 LIMIT 1"
+		result := tx.QueryRow(ctx, query, userID, link.FullLink)
 
-		var conflict FullLinkConflict
+		var conflict apperror.FullLinkConflict
 		err := result.Scan(&conflict.ShortLink, &conflict.FullLink)
 		if err != nil {
 			return false, err
@@ -80,8 +71,8 @@ func (storage *PostgresLinkRepository) SaveIfAvailable(ctx context.Context, link
 	return true, nil
 }
 
-func (storage *PostgresLinkRepository) SaveBatchIfAvailable(ctx context.Context, links []model.ShortenedLink) (bool, error) {
-	query := "INSERT INTO shortened_links (short_link, full_link) VALUES($1, $2) ON CONFLICT (short_link) DO NOTHING"
+func (storage *PostgresLinkRepository) SaveBatchIfAvailable(ctx context.Context, links []model.ShortenedLink, userID string) (bool, error) {
+	query := "INSERT INTO shortened_links (short_link, full_link, user_id) VALUES($1, $2, $3) ON CONFLICT (short_link) DO NOTHING"
 	tx, err := storage.pool.Begin(ctx)
 	if err != nil {
 		return false, err
@@ -91,7 +82,7 @@ func (storage *PostgresLinkRepository) SaveBatchIfAvailable(ctx context.Context,
 	batch := &pgx.Batch{}
 
 	for _, link := range links {
-		batch.Queue(query, link.Short, link.FullLink)
+		batch.Queue(query, link.Short, link.FullLink, userID)
 	}
 
 	batchResults := tx.SendBatch(ctx, batch)
@@ -135,6 +126,27 @@ func (storage *PostgresLinkRepository) FindLink(ctx context.Context, shortLink s
 	}
 
 	return &shortenedLink, nil
+}
+
+func (storage *PostgresLinkRepository) GetUserLinks(ctx context.Context, userID string) ([]model.ShortenedLink, error) {
+	query := "SELECT short_link, full_link FROM shortened_links WHERE user_id = $1"
+	rows, err := storage.pool.Query(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	links := make([]model.ShortenedLink, 0, 0)
+	for rows.Next() {
+		var shortenedLink model.ShortenedLink
+		err := rows.Scan(&shortenedLink.Short, &shortenedLink.FullLink)
+		if err != nil {
+			return nil, err
+		}
+		links = append(links, shortenedLink)
+	}
+
+	return links, nil
 }
 
 func (storage *PostgresLinkRepository) Ping(ctx context.Context) error {

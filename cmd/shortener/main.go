@@ -7,11 +7,13 @@ import (
 
 	"github.com/SingletonVD/shortener/internal/config"
 	"github.com/SingletonVD/shortener/internal/handler"
+	"github.com/SingletonVD/shortener/internal/handler/middleware"
 	"github.com/SingletonVD/shortener/internal/logger"
 	"github.com/SingletonVD/shortener/internal/repository/disk"
 	"github.com/SingletonVD/shortener/internal/repository/memory"
 	"github.com/SingletonVD/shortener/internal/repository/pg"
 	"github.com/SingletonVD/shortener/internal/service"
+	"github.com/SingletonVD/shortener/internal/service/auth"
 
 	"database/sql"
 
@@ -76,9 +78,12 @@ func run() error {
 	}
 
 	linkService := service.NewLinkService(appContainer.linkRepository)
+	authService := auth.NewAuthService(serverConfig.AuthSecret)
+	authMiddleware := middleware.NewAuthMiddleware(authService)
+
 	linkHandler := handler.NewLinkHandler(linkService, serverConfig.BaseLinkAddress)
 	pingHandler := handler.NewPingHandler(appContainer.pinger)
-	router := handler.NewRouter(linkHandler, pingHandler)
+	router := handler.NewRouter(linkHandler, pingHandler, authMiddleware)
 
 	return http.ListenAndServe(serverConfig.RunAddress, router)
 }

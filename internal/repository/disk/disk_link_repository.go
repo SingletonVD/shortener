@@ -34,7 +34,7 @@ func NewDiskLinkRepository(fileStoragePath string) (*DiskLinkRepository, error) 
 	return &repo, err
 }
 
-func (storage *DiskLinkRepository) SaveIfAvailable(_ context.Context, link model.ShortenedLink) (bool, error) {
+func (storage *DiskLinkRepository) SaveIfAvailable(_ context.Context, link model.ShortenedLink, userID string) (bool, error) {
 	storage.lock.Lock()
 	defer storage.lock.Unlock()
 
@@ -44,8 +44,11 @@ func (storage *DiskLinkRepository) SaveIfAvailable(_ context.Context, link model
 	}
 
 	persistedLink := model.PersistedShortenedLink{
-		ShortenedLink: link,
-		UUID:          storage.lastID + 1,
+		UserShortenedLink: model.UserShortenedLink{
+			ShortenedLink: link,
+			UserID:        userID,
+		},
+		UUID: storage.lastID + 1,
 	}
 	storage.links[link.Short] = persistedLink
 	err := storage.dumpAll()
@@ -59,7 +62,7 @@ func (storage *DiskLinkRepository) SaveIfAvailable(_ context.Context, link model
 	return true, nil
 }
 
-func (storage *DiskLinkRepository) SaveBatchIfAvailable(_ context.Context, links []model.ShortenedLink) (bool, error) {
+func (storage *DiskLinkRepository) SaveBatchIfAvailable(_ context.Context, links []model.ShortenedLink, userID string) (bool, error) {
 	storage.lock.Lock()
 	defer storage.lock.Unlock()
 
@@ -72,8 +75,11 @@ func (storage *DiskLinkRepository) SaveBatchIfAvailable(_ context.Context, links
 
 	for i, link := range links {
 		persistedLink := model.PersistedShortenedLink{
-			ShortenedLink: link,
-			UUID:          storage.lastID + i + 1,
+			UserShortenedLink: model.UserShortenedLink{
+				ShortenedLink: link,
+				UserID:        userID,
+			},
+			UUID: storage.lastID + i + 1,
 		}
 		storage.links[link.Short] = persistedLink
 	}
@@ -102,6 +108,19 @@ func (storage *DiskLinkRepository) FindLink(_ context.Context, shortLink string)
 	}
 
 	return &persistedLink.ShortenedLink, nil
+}
+
+func (storage *DiskLinkRepository) GetUserLinks(ctx context.Context, userID string) ([]model.ShortenedLink, error) {
+	// неоптимально, но не хотелось строить что-то типа индекса по пользователям для легаси реализации
+	result := make([]model.ShortenedLink, 0, 0)
+
+	for _, link := range storage.links {
+		if link.UserID == userID {
+			result = append(result, link.ShortenedLink)
+		}
+	}
+
+	return result, nil
 }
 
 // в примере файл хранилища - JSON массив, поэтому делаю dump всего,

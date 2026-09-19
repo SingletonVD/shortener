@@ -7,8 +7,9 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/SingletonVD/shortener/internal/apperror"
+	"github.com/SingletonVD/shortener/internal/handler/middleware"
 	"github.com/SingletonVD/shortener/internal/model"
-	"github.com/SingletonVD/shortener/internal/repository/pg"
 	"github.com/SingletonVD/shortener/internal/service"
 	"github.com/SingletonVD/shortener/internal/validation"
 	"github.com/go-chi/chi/v5"
@@ -44,10 +45,16 @@ func (handler *LinkHandler) CreateShortLinkHandle(w http.ResponseWriter, r *http
 		return
 	}
 
-	shortLink, err := handler.linkService.CreateShortLink(r.Context(), string(inputLink))
+	user, ok := middleware.GetUserFromContext(r.Context())
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	shortLink, err := handler.linkService.CreateShortLink(r.Context(), string(inputLink), user.UserID)
 
 	if err != nil {
-		var conflict *pg.FullLinkConflict
+		var conflict *apperror.FullLinkConflict
 		if errors.As(err, &conflict) {
 			w.Header().Add("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusConflict)
@@ -87,11 +94,17 @@ func (handler *LinkHandler) CreateShortLinkJSONHandle(w http.ResponseWriter, r *
 		return
 	}
 
-	shortLink, err := handler.linkService.CreateShortLink(r.Context(), string(shortenRequest.URL))
+	user, ok := middleware.GetUserFromContext(r.Context())
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	shortLink, err := handler.linkService.CreateShortLink(r.Context(), string(shortenRequest.URL), user.UserID)
 	statusCode := http.StatusCreated
 
 	if err != nil {
-		var conflict *pg.FullLinkConflict
+		var conflict *apperror.FullLinkConflict
 		if errors.As(err, &conflict) {
 			statusCode = http.StatusConflict
 			shortLink = conflict.ShortLink
@@ -144,12 +157,18 @@ func (handler *LinkHandler) CreateShortLinksBatchJSONHandle(w http.ResponseWrite
 		}
 	}
 
+	user, ok := middleware.GetUserFromContext(r.Context())
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	originalLinksMap := make(map[string]string)
 	for _, requestElement := range shortenBatchRequest {
 		originalLinksMap[requestElement.CorrelationID] = requestElement.OriginalURL
 	}
 
-	shortenedLinksMap, err := handler.linkService.CreateShortLinksBatch(r.Context(), originalLinksMap)
+	shortenedLinksMap, err := handler.linkService.CreateShortLinksBatch(r.Context(), originalLinksMap, user.UserID)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -195,4 +214,35 @@ func (handler *LinkHandler) GetShortLinkHandle(w http.ResponseWriter, r *http.Re
 
 	w.Header().Add("Location", link.FullLink)
 	w.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+func (handler *LinkHandler) GetUserLinksHandle(w http.ResponseWriter, r *http.Request) {
+	user, ok := middleware.GetUserFromContext(r.Context())
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	links, err := handler.linkService.GetUserLinks(r.Context(), user.UserID)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if len(links) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	responseJSON, err := json.Marshal(links)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(responseJSON)
 }

@@ -10,6 +10,7 @@ type ServerConfig struct {
 	BaseLinkAddress string
 	FileStoragePath string
 	DatabaseDsn     string
+	AuthSecret      string
 }
 
 func InitServerConfig() *ServerConfig {
@@ -18,6 +19,7 @@ func InitServerConfig() *ServerConfig {
 	flag.StringVar(&serverConfig.BaseLinkAddress, "b", "http://localhost:8080", "base address for shortened link")
 	flag.StringVar(&serverConfig.FileStoragePath, "f", "", "path to json storage file")
 	flag.StringVar(&serverConfig.DatabaseDsn, "d", "", "database connection address")
+	flag.StringVar(&serverConfig.AuthSecret, "s", "", "jwt auth secret")
 	flag.Parse()
 
 	if envServerAddress := os.Getenv("SERVER_ADDRESS"); envServerAddress != "" {
@@ -34,6 +36,10 @@ func InitServerConfig() *ServerConfig {
 
 	if databaseDsn := os.Getenv("DATABASE_DSN"); databaseDsn != "" {
 		serverConfig.DatabaseDsn = databaseDsn
+	}
+
+	if authSecret := os.Getenv("AUTH_SECRET"); authSecret != "" {
+		serverConfig.AuthSecret = authSecret
 	}
 
 	return serverConfig
