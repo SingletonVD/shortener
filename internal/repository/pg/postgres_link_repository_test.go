@@ -3,6 +3,7 @@ package pg
 import (
 	"testing"
 
+	"github.com/SingletonVD/shortener/internal/apperror"
 	"github.com/SingletonVD/shortener/internal/model"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/require"
@@ -26,20 +27,21 @@ func TestPostgresLinkRepository(t *testing.T) {
 			Short:    "12345678",
 			FullLink: "https://yandex.ru",
 		}
+		userID := "1"
 
-		saved, err := postgresLinkRepository.SaveIfAvailable(ctx, shortenedLink)
+		saved, err := postgresLinkRepository.SaveIfAvailable(ctx, shortenedLink, userID)
 		require.NoError(t, err)
 		require.Equal(t, true, saved)
 
-		_, err = postgresLinkRepository.SaveIfAvailable(ctx, shortenedLink)
-		require.EqualError(t, err, (&FullLinkConflict{ShortLink: "12345678", FullLink: "https://yandex.ru"}).Error())
+		_, err = postgresLinkRepository.SaveIfAvailable(ctx, shortenedLink, userID)
+		require.EqualError(t, err, (&apperror.ErrFullLinkConflict{ShortLink: "12345678", FullLink: "https://yandex.ru"}).Error())
 
 		shortenedLink = model.ShortenedLink{
 			Short:    "12345678",
 			FullLink: "https://yandex2.ru",
 		}
 
-		saved, err = postgresLinkRepository.SaveIfAvailable(ctx, shortenedLink)
+		saved, err = postgresLinkRepository.SaveIfAvailable(ctx, shortenedLink, userID)
 		require.NoError(t, err)
 		require.Equal(t, false, saved)
 	})
@@ -51,8 +53,9 @@ func TestPostgresLinkRepository(t *testing.T) {
 			Short:    "01234567",
 			FullLink: "https://yandex2.ru",
 		}
+		userID := "1"
 
-		_, err := postgresLinkRepository.SaveIfAvailable(ctx, shortenedLink)
+		_, err := postgresLinkRepository.SaveIfAvailable(ctx, shortenedLink, userID)
 		require.NoError(t, err)
 
 		foundLink, err := postgresLinkRepository.FindLink(ctx, shortenedLink.Short)
@@ -76,8 +79,9 @@ func TestPostgresLinkRepository(t *testing.T) {
 			Short:    "34567890",
 			FullLink: "https://ya.ru",
 		}}
+		userID := "1"
 
-		saved, err := postgresLinkRepository.SaveBatchIfAvailable(ctx, shortenedLinks)
+		saved, err := postgresLinkRepository.SaveBatchIfAvailable(ctx, shortenedLinks, userID)
 		require.NoError(t, err)
 		require.Equal(t, true, saved)
 
@@ -94,7 +98,7 @@ func TestPostgresLinkRepository(t *testing.T) {
 			FullLink: "https://ya2.ru",
 		}}
 
-		saved, err = postgresLinkRepository.SaveBatchIfAvailable(ctx, notSavedShortenedLinks)
+		saved, err = postgresLinkRepository.SaveBatchIfAvailable(ctx, notSavedShortenedLinks, userID)
 		require.NoError(t, err)
 		require.Equal(t, false, saved)
 

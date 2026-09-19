@@ -16,7 +16,7 @@ type FakeRepository struct {
 	savedLinksBatch []string
 }
 
-func (repo *FakeRepository) SaveIfAvailable(_ context.Context, link model.ShortenedLink) (bool, error) {
+func (repo *FakeRepository) SaveIfAvailable(_ context.Context, link model.ShortenedLink, _ string) (bool, error) {
 	repo.saveCalls += 1
 	if repo.ignoreNextSave {
 		repo.ignoreNextSave = false
@@ -26,7 +26,7 @@ func (repo *FakeRepository) SaveIfAvailable(_ context.Context, link model.Shorte
 	return true, nil
 }
 
-func (repo *FakeRepository) SaveBatchIfAvailable(_ context.Context, linksBatch []model.ShortenedLink) (bool, error) {
+func (repo *FakeRepository) SaveBatchIfAvailable(_ context.Context, linksBatch []model.ShortenedLink, _ string) (bool, error) {
 	repo.saveCalls += 1
 	if repo.ignoreNextSave {
 		repo.ignoreNextSave = false
@@ -43,6 +43,10 @@ func (repo *FakeRepository) FindLink(_ context.Context, _ string) (*model.Shorte
 	return nil, nil
 }
 
+func (repo *FakeRepository) GetUserLinks(_ context.Context, _ string) ([]model.ShortenedLink, error) {
+	return nil, nil
+}
+
 func TestCreateShortLink(t *testing.T) {
 	type Want struct {
 		regexp    string
@@ -51,15 +55,17 @@ func TestCreateShortLink(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name string
-		link string
-		repo FakeRepository
-		want Want
+		name   string
+		link   string
+		userID string
+		repo   FakeRepository
+		want   Want
 	}{
 		{
-			name: "Save link when no collision",
-			link: "https://practicum.yandex.ru",
-			repo: FakeRepository{ignoreNextSave: false},
+			name:   "Save link when no collision",
+			link:   "https://practicum.yandex.ru",
+			userID: "1",
+			repo:   FakeRepository{ignoreNextSave: false},
 			want: Want{
 				regexp:    `^[a-zA-Z]{8}$`,
 				saveCalls: 1,
@@ -67,9 +73,10 @@ func TestCreateShortLink(t *testing.T) {
 			},
 		},
 		{
-			name: "Save link when collision",
-			link: "https://practicum.yandex.ru",
-			repo: FakeRepository{ignoreNextSave: true},
+			name:   "Save link when collision",
+			link:   "https://practicum.yandex.ru",
+			userID: "1",
+			repo:   FakeRepository{ignoreNextSave: true},
 			want: Want{
 				regexp:    `^[a-zA-Z]{8}$`,
 				saveCalls: 2,
@@ -81,7 +88,7 @@ func TestCreateShortLink(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			service := NewLinkService(&testCase.repo)
-			shortLink, err := service.CreateShortLink(context.TODO(), testCase.link)
+			shortLink, err := service.CreateShortLink(context.TODO(), testCase.link, testCase.userID)
 
 			require.NoError(t, err)
 			assert.Regexp(t, testCase.want.regexp, shortLink)
@@ -99,15 +106,17 @@ func TestCreateShortLinksBatch(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name  string
-		links map[string]string
-		repo  FakeRepository
-		want  Want
+		name   string
+		links  map[string]string
+		userID string
+		repo   FakeRepository
+		want   Want
 	}{
 		{
-			name:  "Save links when no collision",
-			links: map[string]string{"1": "https://practicum.yandex.ru", "2": "https://ya.ru"},
-			repo:  FakeRepository{ignoreNextSave: false},
+			name:   "Save links when no collision",
+			links:  map[string]string{"1": "https://practicum.yandex.ru", "2": "https://ya.ru"},
+			userID: "1",
+			repo:   FakeRepository{ignoreNextSave: false},
 			want: Want{
 				regexp:     `^[a-zA-Z]{8}$`,
 				saveCalls:  1,
@@ -115,9 +124,10 @@ func TestCreateShortLinksBatch(t *testing.T) {
 			},
 		},
 		{
-			name:  "Save links when collision",
-			links: map[string]string{"1": "https://practicum.yandex.ru", "2": "https://ya.ru"},
-			repo:  FakeRepository{ignoreNextSave: true},
+			name:   "Save links when collision",
+			links:  map[string]string{"1": "https://practicum.yandex.ru", "2": "https://ya.ru"},
+			userID: "1",
+			repo:   FakeRepository{ignoreNextSave: true},
 			want: Want{
 				regexp:     `^[a-zA-Z]{8}$`,
 				saveCalls:  2,
@@ -129,7 +139,7 @@ func TestCreateShortLinksBatch(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			service := NewLinkService(&testCase.repo)
-			savedLinks, err := service.CreateShortLinksBatch(context.TODO(), testCase.links)
+			savedLinks, err := service.CreateShortLinksBatch(context.TODO(), testCase.links, testCase.userID)
 
 			require.NoError(t, err)
 
