@@ -235,7 +235,16 @@ func (handler *LinkHandler) GetUserLinksHandle(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	responseJSON, err := json.Marshal(links)
+	response := make([]model.UserLinksResponseElement, 0)
+
+	for _, link := range links {
+		response = append(response, model.UserLinksResponseElement{
+			ShortURL:    fmt.Sprintf("%s/%s", handler.baseLinkAddress, link.Short),
+			OriginalURL: link.FullLink,
+		})
+	}
+
+	responseJSON, err := json.Marshal(response)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
