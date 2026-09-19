@@ -45,6 +45,7 @@ func (authMiddleware *AuthMiddleware) IntrospectUserJWT(nextHandler http.Handler
 		if err != nil {
 			if errors.Is(err, http.ErrNoCookie) {
 				authMiddleware.createUser(nextHandler).ServeHTTP(w, r)
+				return
 			}
 			nextHandler.ServeHTTP(w, r)
 			return
