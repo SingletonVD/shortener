@@ -19,7 +19,7 @@ import (
 
 type FakeDeleter struct{}
 
-func (_ *FakeDeleter) Enqueue(links []model.DeleteLink) {}
+func (*FakeDeleter) Enqueue(links []model.DeleteLink) {}
 
 var deleter = &FakeDeleter{}
 
