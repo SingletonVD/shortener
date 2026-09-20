@@ -1,8 +1,9 @@
 package model
 
 type ShortenedLink struct {
-	Short    string `json:"short_url"`
-	FullLink string `json:"original_url"`
+	Short       string `json:"short_url"`
+	FullLink    string `json:"original_url"`
+	DeletedFlag bool   `json:"is_deleted"`
 }
 
 type UserShortenedLink struct {

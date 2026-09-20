@@ -115,12 +115,29 @@ func (storage *DiskLinkRepository) GetUserLinks(ctx context.Context, userID stri
 	result := make([]model.ShortenedLink, 0)
 
 	for _, link := range storage.links {
-		if link.UserID == userID {
+		if link.UserID == userID && !link.DeletedFlag {
 			result = append(result, link.ShortenedLink)
 		}
 	}
 
 	return result, nil
+}
+
+func (storage *DiskLinkRepository) DeleteBatch(ctx context.Context, links []model.DeleteLink) error {
+	storage.lock.Lock()
+	defer storage.lock.Unlock()
+
+	for _, linkToDelete := range links {
+		link, found := storage.links[linkToDelete.ShortLink]
+		if found {
+			if link.UserID == linkToDelete.UserID {
+				link.DeletedFlag = true
+				storage.links[link.Short] = link
+			}
+		}
+	}
+
+	return storage.dumpAll()
 }
 
 // в примере файл хранилища - JSON массив, поэтому делаю dump всего,

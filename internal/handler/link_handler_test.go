@@ -17,6 +17,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type FakeDeleter struct{}
+
+func (_ *FakeDeleter) Enqueue(links []model.DeleteLink) {}
+
+var deleter = &FakeDeleter{}
+
 func TestCreateShortLinkHandle(t *testing.T) {
 	type Want struct {
 		statusCode  int
@@ -28,7 +34,7 @@ func TestCreateShortLinkHandle(t *testing.T) {
 	baseLinkAddress := "http://localhost:8080"
 	storage := memory.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
-	handler := NewLinkHandler(service, baseLinkAddress)
+	handler := NewLinkHandler(service, baseLinkAddress, deleter)
 	authService := auth.NewAuthService("testSecret")
 	authMiddleware := middleware.NewAuthMiddleware(authService)
 	router := NewRouter(handler, nil, authMiddleware)
@@ -114,7 +120,7 @@ func TestCreateShortLinkJsonHandle(t *testing.T) {
 	service := service.NewLinkService(storage)
 	authService := auth.NewAuthService("testSecret")
 	authMiddleware := middleware.NewAuthMiddleware(authService)
-	handler := NewLinkHandler(service, baseLinkAddress)
+	handler := NewLinkHandler(service, baseLinkAddress, deleter)
 	router := NewRouter(handler, nil, authMiddleware)
 
 	testCases := []struct {
@@ -207,7 +213,7 @@ func TestCreateShortLinkBatchJsonHandle(t *testing.T) {
 	baseLinkAddress := "http://localhost:8080"
 	storage := memory.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
-	handler := NewLinkHandler(service, baseLinkAddress)
+	handler := NewLinkHandler(service, baseLinkAddress, deleter)
 	authService := auth.NewAuthService("testSecret")
 	authMiddleware := middleware.NewAuthMiddleware(authService)
 	router := NewRouter(handler, nil, authMiddleware)
@@ -366,7 +372,7 @@ func TestGetShortLinkHandle(t *testing.T) {
 			baseLinkAddress := "http://localhost:8080"
 			storage := testCase.fakeRepository
 			service := service.NewLinkService(storage)
-			handler := NewLinkHandler(service, baseLinkAddress)
+			handler := NewLinkHandler(service, baseLinkAddress, deleter)
 			authService := auth.NewAuthService("testSecret")
 			authMiddleware := middleware.NewAuthMiddleware(authService)
 			router := NewRouter(handler, nil, authMiddleware)

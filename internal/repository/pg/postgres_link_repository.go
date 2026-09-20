@@ -30,7 +30,7 @@ func NewPostgresLinkRepository(pool *pgxpool.Pool) (*PostgresLinkRepository, err
 }
 
 func (storage *PostgresLinkRepository) SaveIfAvailable(ctx context.Context, link model.ShortenedLink, userID string) (bool, error) {
-	query := "INSERT INTO shortened_links (short_link, full_link, user_id) VALUES($1, $2, $3) ON CONFLICT (user_id, full_link) DO NOTHING"
+	query := "INSERT INTO shortened_links (short_link, full_link, user_id) VALUES($1, $2, $3) ON CONFLICT (user_id, full_link) WHERE is_deleted = FALSE DO NOTHING"
 	tx, err := storage.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
 	if err != nil {
 		return false, err
@@ -113,11 +113,11 @@ func (storage *PostgresLinkRepository) SaveBatchIfAvailable(ctx context.Context,
 }
 
 func (storage *PostgresLinkRepository) FindLink(ctx context.Context, shortLink string) (*model.ShortenedLink, error) {
-	query := "SELECT short_link, full_link FROM shortened_links WHERE short_link = $1 LIMIT 1"
+	query := "SELECT short_link, full_link, is_deleted FROM shortened_links WHERE short_link = $1 LIMIT 1"
 	result := storage.pool.QueryRow(ctx, query, shortLink)
 
 	var shortenedLink model.ShortenedLink
-	err := result.Scan(&shortenedLink.Short, &shortenedLink.FullLink)
+	err := result.Scan(&shortenedLink.Short, &shortenedLink.FullLink, &shortenedLink.DeletedFlag)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -129,7 +129,7 @@ func (storage *PostgresLinkRepository) FindLink(ctx context.Context, shortLink s
 }
 
 func (storage *PostgresLinkRepository) GetUserLinks(ctx context.Context, userID string) ([]model.ShortenedLink, error) {
-	query := "SELECT short_link, full_link FROM shortened_links WHERE user_id = $1"
+	query := "SELECT short_link, full_link FROM shortened_links WHERE user_id = $1 AND is_deleted = FALSE"
 	rows, err := storage.pool.Query(ctx, query, userID)
 	if err != nil {
 		return nil, err
@@ -151,4 +151,31 @@ func (storage *PostgresLinkRepository) GetUserLinks(ctx context.Context, userID 
 
 func (storage *PostgresLinkRepository) Ping(ctx context.Context) error {
 	return storage.pool.Ping(ctx)
+}
+
+func (storage *PostgresLinkRepository) DeleteBatch(ctx context.Context, links []model.DeleteLink) error {
+	query := "UPDATE shortened_links SET is_deleted = true WHERE short_link = $1 AND user_id = $2"
+
+	batch := &pgx.Batch{}
+
+	for _, link := range links {
+		batch.Queue(query, link.ShortLink, link.UserID)
+	}
+
+	batchResults := storage.pool.SendBatch(ctx, batch)
+	defer batchResults.Close()
+
+	for range len(links) {
+		_, err := batchResults.Exec()
+		if err != nil {
+			return err
+		}
+	}
+
+	err := batchResults.Close()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

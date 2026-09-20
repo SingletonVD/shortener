@@ -14,6 +14,7 @@ import (
 	"github.com/SingletonVD/shortener/internal/repository/pg"
 	"github.com/SingletonVD/shortener/internal/service"
 	"github.com/SingletonVD/shortener/internal/service/auth"
+	"github.com/SingletonVD/shortener/internal/worker"
 
 	"database/sql"
 
@@ -22,8 +23,9 @@ import (
 )
 
 type AppContainer struct {
-	pinger         handler.Pinger
-	linkRepository service.LinkRepository
+	pinger               handler.Pinger
+	linkRepository       service.LinkRepository
+	deleteLinkRepository worker.DeleteLinkRepository
 }
 
 func newAppContainer(ctx context.Context, serverConfig *config.ServerConfig) (*AppContainer, error) {
@@ -37,8 +39,9 @@ func newAppContainer(ctx context.Context, serverConfig *config.ServerConfig) (*A
 			return nil, err
 		}
 		return &AppContainer{
-			pinger:         repository,
-			linkRepository: repository,
+			pinger:               repository,
+			linkRepository:       repository,
+			deleteLinkRepository: repository,
 		}, nil
 	}
 
@@ -48,15 +51,17 @@ func newAppContainer(ctx context.Context, serverConfig *config.ServerConfig) (*A
 			return nil, err
 		}
 		return &AppContainer{
-			pinger:         repository,
-			linkRepository: repository,
+			pinger:               repository,
+			linkRepository:       repository,
+			deleteLinkRepository: repository,
 		}, nil
 	}
 
 	repository := memory.NewMemLinkRepository()
 	return &AppContainer{
-		pinger:         repository,
-		linkRepository: repository,
+		pinger:               repository,
+		linkRepository:       repository,
+		deleteLinkRepository: repository,
 	}, nil
 }
 
@@ -80,8 +85,10 @@ func run() error {
 	linkService := service.NewLinkService(appContainer.linkRepository)
 	authService := auth.NewAuthService(serverConfig.AuthSecret)
 	authMiddleware := middleware.NewAuthMiddleware(authService)
+	deleter := worker.NewDeleteWorker(appContainer.deleteLinkRepository)
+	go deleter.Schedule(ctx)
 
-	linkHandler := handler.NewLinkHandler(linkService, serverConfig.BaseLinkAddress)
+	linkHandler := handler.NewLinkHandler(linkService, serverConfig.BaseLinkAddress, deleter)
 	pingHandler := handler.NewPingHandler(appContainer.pinger)
 	router := handler.NewRouter(linkHandler, pingHandler, authMiddleware)
 

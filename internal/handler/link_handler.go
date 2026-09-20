@@ -15,13 +15,18 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+type Deleter interface {
+	Enqueue(links []model.DeleteLink)
+}
+
 type LinkHandler struct {
 	linkService     *service.LinkService
 	baseLinkAddress string
+	deleter         Deleter
 }
 
-func NewLinkHandler(linkService *service.LinkService, baseLinkAddress string) *LinkHandler {
-	return &LinkHandler{linkService: linkService, baseLinkAddress: baseLinkAddress}
+func NewLinkHandler(linkService *service.LinkService, baseLinkAddress string, deleter Deleter) *LinkHandler {
+	return &LinkHandler{linkService: linkService, baseLinkAddress: baseLinkAddress, deleter: deleter}
 }
 
 func (handler *LinkHandler) CreateShortLinkHandle(w http.ResponseWriter, r *http.Request) {
@@ -212,6 +217,11 @@ func (handler *LinkHandler) GetShortLinkHandle(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	if link.DeletedFlag {
+		w.WriteHeader(http.StatusGone)
+		return
+	}
+
 	w.Header().Add("Location", link.FullLink)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
@@ -254,4 +264,39 @@ func (handler *LinkHandler) GetUserLinksHandle(w http.ResponseWriter, r *http.Re
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(responseJSON)
+}
+
+func (handler *LinkHandler) DeleteLinks(w http.ResponseWriter, r *http.Request) {
+	if (r.Header.Get("Content-Type")) != "application/json" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	defer r.Body.Close()
+
+	var deleteLinksRequest []string
+
+	dec := json.NewDecoder(r.Body)
+
+	if err := dec.Decode(&deleteLinksRequest); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	user, ok := middleware.GetUserFromContext(r.Context())
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var deleteLinksBatch []model.DeleteLink
+
+	for _, shortLinkToDelete := range deleteLinksRequest {
+		deleteLink := model.DeleteLink{ShortLink: shortLinkToDelete, UserID: user.UserID}
+		deleteLinksBatch = append(deleteLinksBatch, deleteLink)
+	}
+
+	handler.deleter.Enqueue(deleteLinksBatch)
+
+	w.WriteHeader(http.StatusAccepted)
 }
