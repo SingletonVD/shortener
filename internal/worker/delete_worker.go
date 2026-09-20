@@ -46,7 +46,7 @@ func (worker *DeleteWorker) Schedule(ctx context.Context) {
 		select {
 		case link := <-worker.queue:
 			linksBatch = append(linksBatch, link)
-			if len(linksBatch) == batchSize {
+			if len(linksBatch) >= batchSize {
 				linksBatch = worker.deleteBatch(ctx, linksBatch)
 			}
 		case <-ticker.C:
