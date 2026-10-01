@@ -26,7 +26,7 @@ func InitServerConfig() *ServerConfig {
 	flag.IntVar(&serverConfig.DeleteWorkerConfig.BatchSize, "dwBatchSize", 100, "delete worker batch size")
 	flag.IntVar(&serverConfig.DeleteWorkerConfig.BufferSize, "dwBufferSize", 1024, "delete worker buffer size")
 	flag.IntVar(&serverConfig.DeleteWorkerConfig.ConcurrentWriters, "dwConcurrentWriters", 10, "delete worker concurrent queue writers")
-	flag.IntVar(&serverConfig.DeleteWorkerConfig.ScheduleInterval, "dwScheduleInterval", 100, "delete worker schedule interval in seconds")
+	flag.IntVar(&serverConfig.DeleteWorkerConfig.ScheduleInterval, "dwScheduleInterval", 10, "delete worker schedule interval in seconds")
 	flag.Parse()
 
 	if envServerAddress := os.Getenv("SERVER_ADDRESS"); envServerAddress != "" {
