@@ -23,6 +23,8 @@ func (unexpectedSigningMethod *ErrUnexpectedSigningMethod) Error() string {
 }
 
 var (
-	ErrTokenNotValid    = errors.New("token is not valid")
-	ErrUserIDNotDefined = errors.New("user id is not defined in token")
+	ErrTokenNotValid     = errors.New("token is not valid")
+	ErrUserIDNotDefined  = errors.New("user id is not defined in token")
+	ErrUserNotInContext  = errors.New("user not found in context")
+	ErrUserIncorrectType = errors.New("user value in context has wrong type")
 )

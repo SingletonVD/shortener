@@ -2,7 +2,6 @@ package pg
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 
 	"github.com/SingletonVD/shortener/internal/apperror"
@@ -119,7 +118,7 @@ func (storage *PostgresLinkRepository) FindLink(ctx context.Context, shortLink s
 	var shortenedLink model.ShortenedLink
 	err := result.Scan(&shortenedLink.Short, &shortenedLink.FullLink, &shortenedLink.DeletedFlag)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err

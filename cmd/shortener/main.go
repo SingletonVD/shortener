@@ -13,7 +13,7 @@ import (
 	"github.com/SingletonVD/shortener/internal/repository/memory"
 	"github.com/SingletonVD/shortener/internal/repository/pg"
 	"github.com/SingletonVD/shortener/internal/service"
-	"github.com/SingletonVD/shortener/internal/service/auth"
+	"github.com/SingletonVD/shortener/internal/token"
 	"github.com/SingletonVD/shortener/internal/worker"
 
 	"database/sql"
@@ -83,9 +83,9 @@ func run() error {
 	}
 
 	linkService := service.NewLinkService(appContainer.linkRepository)
-	authService := auth.NewAuthService(serverConfig.AuthSecret)
-	authMiddleware := middleware.NewAuthMiddleware(authService)
-	deleter := worker.NewDeleteWorker(appContainer.deleteLinkRepository)
+	tokenManager := token.NewManager(serverConfig.AuthSecret)
+	authMiddleware := middleware.NewAuthMiddleware(tokenManager)
+	deleter := worker.NewDeleteWorker(appContainer.deleteLinkRepository, serverConfig.DeleteWorkerConfig)
 	go deleter.Schedule(ctx)
 
 	linkHandler := handler.NewLinkHandler(linkService, serverConfig.BaseLinkAddress, deleter)

@@ -4,41 +4,51 @@ import (
 	"context"
 	"time"
 
+	"github.com/SingletonVD/shortener/internal/concurrency"
 	"github.com/SingletonVD/shortener/internal/logger"
 	"github.com/SingletonVD/shortener/internal/model"
 	"go.uber.org/zap"
-)
-
-const (
-	bufferSize       = 1024
-	batchSize        = 100
-	scheduleInterval = 10
 )
 
 type DeleteLinkRepository interface {
 	DeleteBatch(ctx context.Context, links []model.DeleteLink) error
 }
 
-type DeleteWorker struct {
-	queue          chan model.DeleteLink
-	linkRepository DeleteLinkRepository
+type DeleteWorkerConfig struct {
+	BufferSize        int
+	BatchSize         int
+	ScheduleInterval  int
+	ConcurrentWriters int
 }
 
-func NewDeleteWorker(linkRepository DeleteLinkRepository) *DeleteWorker {
+type DeleteWorker struct {
+	queue            chan model.DeleteLink
+	writersSemaphore concurrency.Semaphore
+	linkRepository   DeleteLinkRepository
+	config           DeleteWorkerConfig
+}
+
+func NewDeleteWorker(linkRepository DeleteLinkRepository, config DeleteWorkerConfig) *DeleteWorker {
 	return &DeleteWorker{
-		queue:          make(chan model.DeleteLink, bufferSize),
-		linkRepository: linkRepository,
+		queue:            make(chan model.DeleteLink, config.BufferSize),
+		writersSemaphore: *concurrency.NewSemaphore(config.ConcurrentWriters),
+		linkRepository:   linkRepository,
+		config:           config,
 	}
 }
 
 func (worker *DeleteWorker) Enqueue(links []model.DeleteLink) {
-	for _, link := range links {
-		worker.queue <- link
-	}
+	go func() {
+		worker.writersSemaphore.Acquire()
+		for _, link := range links {
+			worker.queue <- link
+		}
+		worker.writersSemaphore.Release()
+	}()
 }
 
 func (worker *DeleteWorker) Schedule(ctx context.Context) {
-	ticker := time.NewTicker(scheduleInterval * time.Second)
+	ticker := time.NewTicker(time.Duration(worker.config.ScheduleInterval) * time.Second)
 
 	var linksBatch []model.DeleteLink
 
@@ -46,7 +56,7 @@ func (worker *DeleteWorker) Schedule(ctx context.Context) {
 		select {
 		case link := <-worker.queue:
 			linksBatch = append(linksBatch, link)
-			if len(linksBatch) >= batchSize {
+			if len(linksBatch) >= worker.config.BatchSize {
 				linksBatch = worker.deleteBatch(ctx, linksBatch)
 			}
 		case <-ticker.C:

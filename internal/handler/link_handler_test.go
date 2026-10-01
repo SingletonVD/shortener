@@ -12,7 +12,7 @@ import (
 	"github.com/SingletonVD/shortener/internal/model"
 	"github.com/SingletonVD/shortener/internal/repository/memory"
 	"github.com/SingletonVD/shortener/internal/service"
-	"github.com/SingletonVD/shortener/internal/service/auth"
+	"github.com/SingletonVD/shortener/internal/token"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,8 +35,8 @@ func TestCreateShortLinkHandle(t *testing.T) {
 	storage := memory.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
 	handler := NewLinkHandler(service, baseLinkAddress, deleter)
-	authService := auth.NewAuthService("testSecret")
-	authMiddleware := middleware.NewAuthMiddleware(authService)
+	tokenManager := token.NewManager("testSecret")
+	authMiddleware := middleware.NewAuthMiddleware(tokenManager)
 	router := NewRouter(handler, nil, authMiddleware)
 
 	testCases := []struct {
@@ -118,8 +118,8 @@ func TestCreateShortLinkJsonHandle(t *testing.T) {
 	baseLinkAddress := "http://localhost:8080"
 	storage := memory.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
-	authService := auth.NewAuthService("testSecret")
-	authMiddleware := middleware.NewAuthMiddleware(authService)
+	tokenManager := token.NewManager("testSecret")
+	authMiddleware := middleware.NewAuthMiddleware(tokenManager)
 	handler := NewLinkHandler(service, baseLinkAddress, deleter)
 	router := NewRouter(handler, nil, authMiddleware)
 
@@ -214,8 +214,8 @@ func TestCreateShortLinkBatchJsonHandle(t *testing.T) {
 	storage := memory.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
 	handler := NewLinkHandler(service, baseLinkAddress, deleter)
-	authService := auth.NewAuthService("testSecret")
-	authMiddleware := middleware.NewAuthMiddleware(authService)
+	tokenManager := token.NewManager("testSecret")
+	authMiddleware := middleware.NewAuthMiddleware(tokenManager)
 	router := NewRouter(handler, nil, authMiddleware)
 
 	testCases := []struct {
@@ -373,8 +373,8 @@ func TestGetShortLinkHandle(t *testing.T) {
 			storage := testCase.fakeRepository
 			service := service.NewLinkService(storage)
 			handler := NewLinkHandler(service, baseLinkAddress, deleter)
-			authService := auth.NewAuthService("testSecret")
-			authMiddleware := middleware.NewAuthMiddleware(authService)
+			tokenManager := token.NewManager("testSecret")
+			authMiddleware := middleware.NewAuthMiddleware(tokenManager)
 			router := NewRouter(handler, nil, authMiddleware)
 
 			request := httptest.NewRequest(testCase.method, testCase.path, nil)

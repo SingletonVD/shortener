@@ -7,35 +7,46 @@ import (
 
 	"github.com/SingletonVD/shortener/internal/apperror"
 	"github.com/SingletonVD/shortener/internal/model"
-	"github.com/SingletonVD/shortener/internal/service/auth"
 	"github.com/google/uuid"
 )
 
-type UserContextKey struct{}
+type userContextKeyT struct{}
 
 var (
-	userContextKey = UserContextKey{}
+	userContextKey = userContextKeyT{}
 )
 
 const (
 	sessionJWTCookie = "sessionJWT"
 )
 
-type AuthMiddleware struct {
-	authService *auth.AuthService
+type TokenManager interface {
+	Build(userID string) (string, error)
+	Parse(tokenString string) (userID string, err error)
 }
 
-func NewAuthMiddleware(authService *auth.AuthService) *AuthMiddleware {
-	return &AuthMiddleware{authService: authService}
+type AuthMiddleware struct {
+	tokenManager TokenManager
+}
+
+func NewAuthMiddleware(tokenManager TokenManager) *AuthMiddleware {
+	return &AuthMiddleware{tokenManager: tokenManager}
 }
 
 func SetUserToContext(ctx context.Context, user *model.User) context.Context {
 	return context.WithValue(ctx, userContextKey, user)
 }
 
-func GetUserFromContext(ctx context.Context) (*model.User, bool) {
-	user, ok := ctx.Value(userContextKey).(*model.User)
-	return user, ok
+func GetUserFromContext(ctx context.Context) (*model.User, error) {
+	userUntyped := ctx.Value(userContextKey)
+	if userUntyped == nil {
+		return nil, apperror.ErrUserNotInContext
+	}
+	user, ok := userUntyped.(*model.User)
+	if !ok {
+		return nil, apperror.ErrUserIncorrectType
+	}
+	return user, nil
 }
 
 func (authMiddleware *AuthMiddleware) IntrospectUserJWT(nextHandler http.Handler) http.Handler {
@@ -51,17 +62,19 @@ func (authMiddleware *AuthMiddleware) IntrospectUserJWT(nextHandler http.Handler
 			return
 		}
 
-		user, err := authMiddleware.authService.IntrospectToken(jwtCookie.Value)
+		userID, err := authMiddleware.tokenManager.Parse(jwtCookie.Value)
 		if err != nil {
-			if errors.Is(err, apperror.ErrUserIDNotDefined) {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-			nextHandler.ServeHTTP(w, r)
+			authMiddleware.createUser(nextHandler).ServeHTTP(w, r)
 			return
 		}
 
-		ctxWithUser := SetUserToContext(r.Context(), user)
+		if userID == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		user := model.User{UserID: userID}
+		ctxWithUser := SetUserToContext(r.Context(), &user)
 		nextHandler.ServeHTTP(w, r.WithContext(ctxWithUser))
 	})
 }
@@ -70,7 +83,7 @@ func (authMiddleware *AuthMiddleware) createUser(nextHandler http.Handler) http.
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		newUserID := uuid.New().String()
 		newUser := &model.User{UserID: newUserID}
-		token, err := authMiddleware.authService.CreateToken(newUser)
+		token, err := authMiddleware.tokenManager.Build(newUserID)
 
 		if err != nil {
 			nextHandler.ServeHTTP(w, r)

@@ -50,8 +50,8 @@ func (handler *LinkHandler) CreateShortLinkHandle(w http.ResponseWriter, r *http
 		return
 	}
 
-	user, ok := middleware.GetUserFromContext(r.Context())
-	if !ok {
+	user, err := middleware.GetUserFromContext(r.Context())
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -99,8 +99,8 @@ func (handler *LinkHandler) CreateShortLinkJSONHandle(w http.ResponseWriter, r *
 		return
 	}
 
-	user, ok := middleware.GetUserFromContext(r.Context())
-	if !ok {
+	user, err := middleware.GetUserFromContext(r.Context())
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -162,8 +162,8 @@ func (handler *LinkHandler) CreateShortLinksBatchJSONHandle(w http.ResponseWrite
 		}
 	}
 
-	user, ok := middleware.GetUserFromContext(r.Context())
-	if !ok {
+	user, err := middleware.GetUserFromContext(r.Context())
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -227,8 +227,8 @@ func (handler *LinkHandler) GetShortLinkHandle(w http.ResponseWriter, r *http.Re
 }
 
 func (handler *LinkHandler) GetUserLinksHandle(w http.ResponseWriter, r *http.Request) {
-	user, ok := middleware.GetUserFromContext(r.Context())
-	if !ok {
+	user, err := middleware.GetUserFromContext(r.Context())
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -283,8 +283,8 @@ func (handler *LinkHandler) DeleteLinks(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	user, ok := middleware.GetUserFromContext(r.Context())
-	if !ok {
+	user, err := middleware.GetUserFromContext(r.Context())
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
