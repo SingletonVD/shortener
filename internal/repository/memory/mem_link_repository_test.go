@@ -13,20 +13,31 @@ func TestSaveIfAvailable(t *testing.T) {
 	testCases := []struct {
 		name            string
 		link            model.ShortenedLink
-		repositoryState map[string]string
+		userID          string
+		repositoryState map[string]model.UserShortenedLink
 		want            bool
 	}{
 		{
 			name:            "Save new link",
 			link:            model.ShortenedLink{Short: "short", FullLink: "long"},
-			repositoryState: make(map[string]string),
+			userID:          "1",
+			repositoryState: make(map[string]model.UserShortenedLink),
 			want:            true,
 		},
 		{
-			name:            "Save new link with short link collision",
-			link:            model.ShortenedLink{Short: "short", FullLink: "new long"},
-			repositoryState: map[string]string{"short": "old long"},
-			want:            false,
+			name:   "Save new link with short link collision",
+			link:   model.ShortenedLink{Short: "short", FullLink: "new long"},
+			userID: "1",
+			repositoryState: map[string]model.UserShortenedLink{
+				"short": model.UserShortenedLink{
+					ShortenedLink: model.ShortenedLink{
+						Short:    "short",
+						FullLink: "old long",
+					},
+					UserID: "1",
+				},
+			},
+			want: false,
 		},
 	}
 
@@ -34,7 +45,7 @@ func TestSaveIfAvailable(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			repo := NewMemLinkRepository()
 			repo.links = testCase.repositoryState
-			saveResult, err := repo.SaveIfAvailable(context.TODO(), testCase.link)
+			saveResult, err := repo.SaveIfAvailable(context.TODO(), testCase.link, testCase.userID)
 			require.NoError(t, err)
 			assert.Equal(t, testCase.want, saveResult)
 		})
@@ -45,20 +56,31 @@ func TestSaveBatchIfAvailable(t *testing.T) {
 	testCases := []struct {
 		name            string
 		links           []model.ShortenedLink
-		repositoryState map[string]string
+		userID          string
+		repositoryState map[string]model.UserShortenedLink
 		want            bool
 	}{
 		{
 			name:            "Save new link",
 			links:           []model.ShortenedLink{{Short: "short", FullLink: "long"}},
-			repositoryState: make(map[string]string),
+			userID:          "1",
+			repositoryState: make(map[string]model.UserShortenedLink),
 			want:            true,
 		},
 		{
-			name:            "Save new link with short link collision",
-			links:           []model.ShortenedLink{{Short: "short", FullLink: "new long"}, {Short: "short", FullLink: "long"}},
-			repositoryState: map[string]string{"short": "old long"},
-			want:            false,
+			name:   "Save new link with short link collision",
+			links:  []model.ShortenedLink{{Short: "short", FullLink: "new long"}, {Short: "short", FullLink: "long"}},
+			userID: "1",
+			repositoryState: map[string]model.UserShortenedLink{
+				"short": model.UserShortenedLink{
+					ShortenedLink: model.ShortenedLink{
+						Short:    "short",
+						FullLink: "old long",
+					},
+					UserID: "1",
+				},
+			},
+			want: false,
 		},
 	}
 
@@ -66,7 +88,7 @@ func TestSaveBatchIfAvailable(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			repo := NewMemLinkRepository()
 			repo.links = testCase.repositoryState
-			saveResult, err := repo.SaveBatchIfAvailable(context.TODO(), testCase.links)
+			saveResult, err := repo.SaveBatchIfAvailable(context.TODO(), testCase.links, testCase.userID)
 			require.NoError(t, err)
 			assert.Equal(t, testCase.want, saveResult)
 		})
@@ -82,22 +104,38 @@ func TestFindFullLink(t *testing.T) {
 	testCases := []struct {
 		name            string
 		shortLink       string
-		repositoryState map[string]string
+		repositoryState map[string]model.UserShortenedLink
 		want            Want
 	}{
 		{
-			name:            "Find existing link",
-			shortLink:       "found",
-			repositoryState: map[string]string{"found": "long"},
+			name:      "Find existing link",
+			shortLink: "found",
+			repositoryState: map[string]model.UserShortenedLink{
+				"found": {
+					ShortenedLink: model.ShortenedLink{
+						Short:    "found",
+						FullLink: "long",
+					},
+					UserID: "1",
+				},
+			},
 			want: Want{
 				found:    true,
 				fullLink: "long",
 			},
 		},
 		{
-			name:            "Not found link",
-			shortLink:       "not found",
-			repositoryState: map[string]string{"found": "long"},
+			name:      "Not found link",
+			shortLink: "not found",
+			repositoryState: map[string]model.UserShortenedLink{
+				"found": {
+					ShortenedLink: model.ShortenedLink{
+						Short:    "found",
+						FullLink: "long",
+					},
+					UserID: "1",
+				},
+			},
 			want: Want{
 				found: false,
 			},

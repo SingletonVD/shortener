@@ -8,12 +8,20 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/SingletonVD/shortener/internal/handler/middleware"
 	"github.com/SingletonVD/shortener/internal/model"
 	"github.com/SingletonVD/shortener/internal/repository/memory"
 	"github.com/SingletonVD/shortener/internal/service"
+	"github.com/SingletonVD/shortener/internal/token"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type FakeDeleter struct{}
+
+func (*FakeDeleter) Enqueue(links []model.DeleteLink) {}
+
+var deleter = &FakeDeleter{}
 
 func TestCreateShortLinkHandle(t *testing.T) {
 	type Want struct {
@@ -26,8 +34,10 @@ func TestCreateShortLinkHandle(t *testing.T) {
 	baseLinkAddress := "http://localhost:8080"
 	storage := memory.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
-	handler := NewLinkHandler(service, baseLinkAddress)
-	router := NewRouter(handler, nil)
+	handler := NewLinkHandler(service, baseLinkAddress, deleter)
+	tokenManager := token.NewManager("testSecret")
+	authMiddleware := middleware.NewAuthMiddleware(tokenManager)
+	router := NewRouter(handler, nil, authMiddleware)
 
 	testCases := []struct {
 		name        string
@@ -108,8 +118,10 @@ func TestCreateShortLinkJsonHandle(t *testing.T) {
 	baseLinkAddress := "http://localhost:8080"
 	storage := memory.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
-	handler := NewLinkHandler(service, baseLinkAddress)
-	router := NewRouter(handler, nil)
+	tokenManager := token.NewManager("testSecret")
+	authMiddleware := middleware.NewAuthMiddleware(tokenManager)
+	handler := NewLinkHandler(service, baseLinkAddress, deleter)
+	router := NewRouter(handler, nil, authMiddleware)
 
 	testCases := []struct {
 		name        string
@@ -201,8 +213,10 @@ func TestCreateShortLinkBatchJsonHandle(t *testing.T) {
 	baseLinkAddress := "http://localhost:8080"
 	storage := memory.NewMemLinkRepository()
 	service := service.NewLinkService(storage)
-	handler := NewLinkHandler(service, baseLinkAddress)
-	router := NewRouter(handler, nil)
+	handler := NewLinkHandler(service, baseLinkAddress, deleter)
+	tokenManager := token.NewManager("testSecret")
+	authMiddleware := middleware.NewAuthMiddleware(tokenManager)
+	router := NewRouter(handler, nil, authMiddleware)
 
 	testCases := []struct {
 		name        string
@@ -287,11 +301,11 @@ type FakeRepository struct {
 	links map[string]string
 }
 
-func (repo *FakeRepository) SaveIfAvailable(_ context.Context, _ model.ShortenedLink) (bool, error) {
+func (repo *FakeRepository) SaveIfAvailable(_ context.Context, _ model.ShortenedLink, _ string) (bool, error) {
 	return true, nil
 }
 
-func (repo *FakeRepository) SaveBatchIfAvailable(_ context.Context, _ []model.ShortenedLink) (bool, error) {
+func (repo *FakeRepository) SaveBatchIfAvailable(_ context.Context, _ []model.ShortenedLink, _ string) (bool, error) {
 	return false, nil
 }
 
@@ -306,6 +320,10 @@ func (repo *FakeRepository) FindLink(_ context.Context, shortLink string) (*mode
 		Short:    shortLink,
 		FullLink: fullLink,
 	}, nil
+}
+
+func (repo *FakeRepository) GetUserLinks(_ context.Context, _ string) ([]model.ShortenedLink, error) {
+	return nil, nil
 }
 
 func TestGetShortLinkHandle(t *testing.T) {
@@ -354,8 +372,10 @@ func TestGetShortLinkHandle(t *testing.T) {
 			baseLinkAddress := "http://localhost:8080"
 			storage := testCase.fakeRepository
 			service := service.NewLinkService(storage)
-			handler := NewLinkHandler(service, baseLinkAddress)
-			router := NewRouter(handler, nil)
+			handler := NewLinkHandler(service, baseLinkAddress, deleter)
+			tokenManager := token.NewManager("testSecret")
+			authMiddleware := middleware.NewAuthMiddleware(tokenManager)
+			router := NewRouter(handler, nil, authMiddleware)
 
 			request := httptest.NewRequest(testCase.method, testCase.path, nil)
 			request.SetPathValue("shortLink", testCase.shortLink)

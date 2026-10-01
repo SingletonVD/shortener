@@ -7,20 +7,26 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/SingletonVD/shortener/internal/apperror"
+	"github.com/SingletonVD/shortener/internal/handler/middleware"
 	"github.com/SingletonVD/shortener/internal/model"
-	"github.com/SingletonVD/shortener/internal/repository/pg"
 	"github.com/SingletonVD/shortener/internal/service"
 	"github.com/SingletonVD/shortener/internal/validation"
 	"github.com/go-chi/chi/v5"
 )
 
+type Deleter interface {
+	Enqueue(links []model.DeleteLink)
+}
+
 type LinkHandler struct {
 	linkService     *service.LinkService
 	baseLinkAddress string
+	deleter         Deleter
 }
 
-func NewLinkHandler(linkService *service.LinkService, baseLinkAddress string) *LinkHandler {
-	return &LinkHandler{linkService: linkService, baseLinkAddress: baseLinkAddress}
+func NewLinkHandler(linkService *service.LinkService, baseLinkAddress string, deleter Deleter) *LinkHandler {
+	return &LinkHandler{linkService: linkService, baseLinkAddress: baseLinkAddress, deleter: deleter}
 }
 
 func (handler *LinkHandler) CreateShortLinkHandle(w http.ResponseWriter, r *http.Request) {
@@ -44,10 +50,16 @@ func (handler *LinkHandler) CreateShortLinkHandle(w http.ResponseWriter, r *http
 		return
 	}
 
-	shortLink, err := handler.linkService.CreateShortLink(r.Context(), string(inputLink))
+	user, err := middleware.GetUserFromContext(r.Context())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	shortLink, err := handler.linkService.CreateShortLink(r.Context(), string(inputLink), user.UserID)
 
 	if err != nil {
-		var conflict *pg.FullLinkConflict
+		var conflict *apperror.ErrFullLinkConflict
 		if errors.As(err, &conflict) {
 			w.Header().Add("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusConflict)
@@ -87,11 +99,17 @@ func (handler *LinkHandler) CreateShortLinkJSONHandle(w http.ResponseWriter, r *
 		return
 	}
 
-	shortLink, err := handler.linkService.CreateShortLink(r.Context(), string(shortenRequest.URL))
+	user, err := middleware.GetUserFromContext(r.Context())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	shortLink, err := handler.linkService.CreateShortLink(r.Context(), string(shortenRequest.URL), user.UserID)
 	statusCode := http.StatusCreated
 
 	if err != nil {
-		var conflict *pg.FullLinkConflict
+		var conflict *apperror.ErrFullLinkConflict
 		if errors.As(err, &conflict) {
 			statusCode = http.StatusConflict
 			shortLink = conflict.ShortLink
@@ -144,12 +162,18 @@ func (handler *LinkHandler) CreateShortLinksBatchJSONHandle(w http.ResponseWrite
 		}
 	}
 
+	user, err := middleware.GetUserFromContext(r.Context())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	originalLinksMap := make(map[string]string)
 	for _, requestElement := range shortenBatchRequest {
 		originalLinksMap[requestElement.CorrelationID] = requestElement.OriginalURL
 	}
 
-	shortenedLinksMap, err := handler.linkService.CreateShortLinksBatch(r.Context(), originalLinksMap)
+	shortenedLinksMap, err := handler.linkService.CreateShortLinksBatch(r.Context(), originalLinksMap, user.UserID)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -193,6 +217,86 @@ func (handler *LinkHandler) GetShortLinkHandle(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	if link.DeletedFlag {
+		w.WriteHeader(http.StatusGone)
+		return
+	}
+
 	w.Header().Add("Location", link.FullLink)
 	w.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+func (handler *LinkHandler) GetUserLinksHandle(w http.ResponseWriter, r *http.Request) {
+	user, err := middleware.GetUserFromContext(r.Context())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	links, err := handler.linkService.GetUserLinks(r.Context(), user.UserID)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if len(links) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	response := make([]model.UserLinksResponseElement, 0)
+
+	for _, link := range links {
+		response = append(response, model.UserLinksResponseElement{
+			ShortURL:    fmt.Sprintf("%s/%s", handler.baseLinkAddress, link.Short),
+			OriginalURL: link.FullLink,
+		})
+	}
+
+	responseJSON, err := json.Marshal(response)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(responseJSON)
+}
+
+func (handler *LinkHandler) DeleteLinks(w http.ResponseWriter, r *http.Request) {
+	if (r.Header.Get("Content-Type")) != "application/json" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	defer r.Body.Close()
+
+	var deleteLinksRequest []string
+
+	dec := json.NewDecoder(r.Body)
+
+	if err := dec.Decode(&deleteLinksRequest); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	user, err := middleware.GetUserFromContext(r.Context())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var deleteLinksBatch []model.DeleteLink
+
+	for _, shortLinkToDelete := range deleteLinksRequest {
+		deleteLink := model.DeleteLink{ShortLink: shortLinkToDelete, UserID: user.UserID}
+		deleteLinksBatch = append(deleteLinksBatch, deleteLink)
+	}
+
+	handler.deleter.Enqueue(deleteLinksBatch)
+
+	w.WriteHeader(http.StatusAccepted)
 }

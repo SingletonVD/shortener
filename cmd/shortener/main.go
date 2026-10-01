@@ -7,11 +7,14 @@ import (
 
 	"github.com/SingletonVD/shortener/internal/config"
 	"github.com/SingletonVD/shortener/internal/handler"
+	"github.com/SingletonVD/shortener/internal/handler/middleware"
 	"github.com/SingletonVD/shortener/internal/logger"
 	"github.com/SingletonVD/shortener/internal/repository/disk"
 	"github.com/SingletonVD/shortener/internal/repository/memory"
 	"github.com/SingletonVD/shortener/internal/repository/pg"
 	"github.com/SingletonVD/shortener/internal/service"
+	"github.com/SingletonVD/shortener/internal/token"
+	"github.com/SingletonVD/shortener/internal/worker"
 
 	"database/sql"
 
@@ -20,8 +23,9 @@ import (
 )
 
 type AppContainer struct {
-	pinger         handler.Pinger
-	linkRepository service.LinkRepository
+	pinger               handler.Pinger
+	linkRepository       service.LinkRepository
+	deleteLinkRepository worker.DeleteLinkRepository
 }
 
 func newAppContainer(ctx context.Context, serverConfig *config.ServerConfig) (*AppContainer, error) {
@@ -35,8 +39,9 @@ func newAppContainer(ctx context.Context, serverConfig *config.ServerConfig) (*A
 			return nil, err
 		}
 		return &AppContainer{
-			pinger:         repository,
-			linkRepository: repository,
+			pinger:               repository,
+			linkRepository:       repository,
+			deleteLinkRepository: repository,
 		}, nil
 	}
 
@@ -46,15 +51,17 @@ func newAppContainer(ctx context.Context, serverConfig *config.ServerConfig) (*A
 			return nil, err
 		}
 		return &AppContainer{
-			pinger:         repository,
-			linkRepository: repository,
+			pinger:               repository,
+			linkRepository:       repository,
+			deleteLinkRepository: repository,
 		}, nil
 	}
 
 	repository := memory.NewMemLinkRepository()
 	return &AppContainer{
-		pinger:         repository,
-		linkRepository: repository,
+		pinger:               repository,
+		linkRepository:       repository,
+		deleteLinkRepository: repository,
 	}, nil
 }
 
@@ -76,9 +83,14 @@ func run() error {
 	}
 
 	linkService := service.NewLinkService(appContainer.linkRepository)
-	linkHandler := handler.NewLinkHandler(linkService, serverConfig.BaseLinkAddress)
+	tokenManager := token.NewManager(serverConfig.AuthSecret)
+	authMiddleware := middleware.NewAuthMiddleware(tokenManager)
+	deleter := worker.NewDeleteWorker(appContainer.deleteLinkRepository, serverConfig.DeleteWorkerConfig)
+	go deleter.Schedule(ctx)
+
+	linkHandler := handler.NewLinkHandler(linkService, serverConfig.BaseLinkAddress, deleter)
 	pingHandler := handler.NewPingHandler(appContainer.pinger)
-	router := handler.NewRouter(linkHandler, pingHandler)
+	router := handler.NewRouter(linkHandler, pingHandler, authMiddleware)
 
 	return http.ListenAndServe(serverConfig.RunAddress, router)
 }

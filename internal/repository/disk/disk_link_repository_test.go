@@ -15,18 +15,21 @@ func TestDiskSaveIfAvailable(t *testing.T) {
 	testCases := []struct {
 		name        string
 		link        model.ShortenedLink
+		userID      string
 		fileContent string
 		want        bool
 	}{
 		{
 			name:        "Save new link",
 			link:        model.ShortenedLink{Short: "short", FullLink: "long"},
+			userID:      "1",
 			fileContent: `[]`,
 			want:        true,
 		},
 		{
 			name:        "Save new link with short link collision",
 			link:        model.ShortenedLink{Short: "short", FullLink: "new long"},
+			userID:      "1",
 			fileContent: `[{"uuid":"1","short_url":"short","original_url":"http://yandex.ru"}]`,
 			want:        false,
 		},
@@ -40,7 +43,7 @@ func TestDiskSaveIfAvailable(t *testing.T) {
 			repo, err := NewDiskLinkRepository(testFileName)
 			require.NoError(t, err)
 
-			saveResult, err := repo.SaveIfAvailable(context.TODO(), testCase.link)
+			saveResult, err := repo.SaveIfAvailable(context.TODO(), testCase.link, testCase.userID)
 			require.NoError(t, err)
 			assert.Equal(t, testCase.want, saveResult)
 		})
@@ -51,18 +54,21 @@ func TestDiskSaveBatchIfAvailable(t *testing.T) {
 	testCases := []struct {
 		name        string
 		links       []model.ShortenedLink
+		userID      string
 		fileContent string
 		want        bool
 	}{
 		{
 			name:        "Save new link",
 			links:       []model.ShortenedLink{{Short: "short", FullLink: "long"}},
+			userID:      "1",
 			fileContent: `[]`,
 			want:        true,
 		},
 		{
 			name:        "Save new link with short link collision",
 			links:       []model.ShortenedLink{{Short: "short", FullLink: "new long"}, {Short: "short", FullLink: "long"}},
+			userID:      "1",
 			fileContent: `[{"uuid":"1","short_url":"short","original_url":"http://yandex.ru"}]`,
 			want:        false,
 		},
@@ -76,7 +82,7 @@ func TestDiskSaveBatchIfAvailable(t *testing.T) {
 			repo, err := NewDiskLinkRepository(testFileName)
 			require.NoError(t, err)
 
-			saveResult, err := repo.SaveBatchIfAvailable(context.TODO(), testCase.links)
+			saveResult, err := repo.SaveBatchIfAvailable(context.TODO(), testCase.links, testCase.userID)
 			require.NoError(t, err)
 			assert.Equal(t, testCase.want, saveResult)
 		})
